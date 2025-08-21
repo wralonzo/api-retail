@@ -1,5 +1,6 @@
 package com.wralonzo.detail_shop.domain.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,9 +32,11 @@ public class Product {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "product")
     private List<SaleDetail> saleDetail;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "product")
     private List<OrderDetail> orderDetail;
 

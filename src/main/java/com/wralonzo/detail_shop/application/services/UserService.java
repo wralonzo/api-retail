@@ -41,7 +41,6 @@ public class UserService {
 
 
     public User createUser(User user) {
-        // Lógica de validación
         final Optional<User> userExist = this.userRepository.findByUsername(user.getUsername());
         if(userExist.isEmpty()){
             String hashedPassword = passwordEncoder.encode(user.getPassword());
