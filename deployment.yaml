@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-boot-app
+  labels:
+    app: spring-boot-app
+spec:
+  replicas: 2 # Número de réplicas
+  selector:
+    matchLabels:
+      app: spring-boot-app
+  template:
+    metadata:
+      labels:
+        app: spring-boot-app
+    spec:
+      containers:
+        - name: spring-boot-app-container
+          image: wralonzo/retailapi:1.0 # Reemplaza con tu imagen de Docker
+          ports:
+            - containerPort: 8080
+          # Opcional: Configurar variables de entorno si las necesitas
+          # env:
+          #   - name: DATABASE_URL
+          #     value: "jdbc:postgresql://postgres-db:5432/mi_base_de_datos"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-boot-app-service
+spec:
+  type: LoadBalancer # o NodePort, ClusterIP dependiendo de tus necesidades
+  selector:
+    app: spring-boot-app
+  ports:
+    - protocol: TCP
+      port: 8080 # Puerto del servicio
+      targetPort: 8080 # Puerto del contenedor
