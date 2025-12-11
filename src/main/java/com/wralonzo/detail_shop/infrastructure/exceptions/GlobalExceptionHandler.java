@@ -3,9 +3,11 @@ package com.wralonzo.detail_shop.infrastructure.exceptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -13,6 +15,17 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Recurso no encontrado. La URL o el método de la petición no es válido.",
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 
     // Maneja excepciones de tipo IllegalArgumentException (ej. validaciones de negocio)
     @ExceptionHandler(IllegalArgumentException.class)
@@ -29,7 +42,6 @@ public class GlobalExceptionHandler {
     // Este es el manejador por defecto para cualquier otra excepción
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex) {
-        // ... tu código original para errores 500 ...
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Error interno del servidor",
@@ -82,5 +94,20 @@ public class GlobalExceptionHandler {
         response.put("message", "El cuerpo de la petición es obligatorio y no debe estar vacío o mal formado.");
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * ✅ NUEVO: Maneja el error 401 No Autorizado cuando las credenciales (usuario/contraseña) son incorrectas.
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(), // Devuelve 401
+                "Credenciales de acceso incorrectas. Verifica tu usuario y contraseña.",
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+        // ¡Cambiamos el estado a 401 UNAUTHORIZED!
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 }

@@ -1,6 +1,7 @@
 package com.wralonzo.detail_shop.security;
 
 import com.wralonzo.detail_shop.domain.entities.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -26,7 +27,7 @@ public class JwtUtil {
     private long expirationInMs;
 
     public String extractUsername(String token) {
-        return extractClaim(token, claims -> claims.getSubject());
+        return extractClaim(token, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<io.jsonwebtoken.Claims, T> claimsResolver) {

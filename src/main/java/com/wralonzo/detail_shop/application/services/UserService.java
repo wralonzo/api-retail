@@ -54,11 +54,7 @@ public class UserService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
-
-        // 2. Carga los detalles del usuario (ya es el objeto User completo)
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
-
-        // 3. Verifica si el objeto UserDetails es una instancia de tu clase User
         if (userDetails instanceof User user) {
             // 4. Genera el token
             final String jwt = jwtUtil.generateToken(userDetails);
@@ -80,8 +76,7 @@ public class UserService {
             return response;
 
         } else {
-            // En caso de que el usuario no se encuentre (aunque no debería pasar después de la autenticación)
-            throw new ResourceConflictException("Credenciales incorrectas");
+           throw new ResourceConflictException("Credenciales incorrectas");
         }
     }
 

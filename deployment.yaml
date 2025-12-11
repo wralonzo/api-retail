@@ -5,7 +5,7 @@ metadata:
   labels:
     app: spring-boot-app
 spec:
-  replicas: 2 # Número de réplicas
+  replicas: 2
   selector:
     matchLabels:
       app: spring-boot-app
@@ -29,10 +29,10 @@ kind: Service
 metadata:
   name: spring-boot-app-service
 spec:
-  type: LoadBalancer # o NodePort, ClusterIP dependiendo de tus necesidades
+  type: LoadBalancer
   selector:
     app: spring-boot-app
   ports:
     - protocol: TCP
-      port: 8080 # Puerto del servicio
-      targetPort: 8080 # Puerto del contenedor
+      port: 8080
+      targetPort: 8080

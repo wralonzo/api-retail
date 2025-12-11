@@ -1,32 +1,22 @@
-# --- Etapa 1: Compilación ---
-# Usar una imagen con el JDK y Maven preinstalados
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
+# -- Usa la imagen base oficial de Tomcat (Versión 10 para Jakarta EE 9/Spring Boot 3+ o la que necesites)
+FROM tomcat:10.1-jdk17-temurin
 
-# Establecer el directorio de trabajo
-WORKDIR /app
+# -- Metadatos del Contenedor (Opcional)
+LABEL maintainer="wralonzo@gmail.com"
+LABEL description="API de Detail Shop desplegada en Tomcat"
 
-# Copiar el archivo pom.xml y las dependencias para una mejor caché
-COPY pom.xml .
-RUN mvn dependency:go-offline
+# -- 1. Elimina el archivo ROOT.war por defecto (opcional)
+# RUN rm -rf /usr/local/tomcat/webapps/ROOT/
 
-# Copiar el resto del código fuente
-COPY src ./src
+# -- 2. Copia tu archivo WAR compilado AL MISMO TIEMPO QUE LO RENOMBRAS a ROOT.war
+# 🛑 CAMBIO CLAVE AQUÍ: Se especifica el nombre de destino 'ROOT.war'
+COPY target/detail-shop-0.0.1-SNAPSHOT.war /usr/local/tomcat/webapps/app.war
 
-# Compilar la aplicación y generar el JAR
-RUN mvn clean package -DskipTests
 
-# --- Etapa 2: Creación de la imagen final ---
-# Usar una imagen base ligera con solo el JRE
-FROM openjdk:21-slim
+# -- 3. Configura el directorio de trabajo (Opcional, para facilitar la administración)
+WORKDIR /usr/local/tomcat
 
-# Exponer el puerto de la aplicación
+# -- 4. Expone el puerto por defecto de Tomcat (8080)
 EXPOSE 8080
 
-# Copiar el archivo JAR desde la etapa de compilación
-# El nombre del archivo JAR se asume que es 'tu-aplicacion.jar'
-COPY --from=build /app/target/detail-shop.jar app.jar
-
-# Comando para ejecutar la aplicación
-ENTRYPOINT ["java", "-jar", "/app.jar"]
-
-#docker build -t wralonzo/retailapi:1.0 .
+CMD ["catalina.sh", "run"]
