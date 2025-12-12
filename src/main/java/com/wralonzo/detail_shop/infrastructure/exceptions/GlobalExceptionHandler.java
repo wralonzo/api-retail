@@ -110,4 +110,15 @@ public class GlobalExceptionHandler {
         // ¡Cambiamos el estado a 401 UNAUTHORIZED!
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        Map<String, Object> errorDetails = Map.of(
+                "timestamp", System.currentTimeMillis(),
+                "status", HttpStatus.FORBIDDEN.value(),
+                "error", "Forbidden",
+                "message", "Acceso denegado. No tiene permisos para este recurso."
+        );
+        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
 }
