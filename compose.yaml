@@ -1,0 +1,15 @@
+# Archivo: compose.yaml
+version: '3.8'
+
+services:
+  app-api:
+    image: detail-shop-api:latest
+    container_name: detail-shop-container
+    build: . # Indica a Compose que construya la imagen usando el Dockerfile en el directorio actual
+    ports:
+      - "8080:8080"
+    # Sobrescribir las variables de Spring Boot directamente aquí
+    env_file:
+    - .env
+      
+    restart: always # Opcional: Reinicia automáticamente si falla
