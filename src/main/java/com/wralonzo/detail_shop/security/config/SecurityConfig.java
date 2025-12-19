@@ -22,7 +22,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 
@@ -38,10 +37,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Al tener el Bean 'corsFilter', Spring Boot lo inyectará automáticamente
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Permitimos explícitamente los preflights (OPTIONS)
+                        .requestMatchers(request -> !"TopFashion-Angular-App".equals(request.getHeader("X-App-Origin")))
+                        .denyAll()
                         .requestMatchers(org.springframework.web.cors.CorsUtils::isPreFlightRequest).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated())
@@ -73,34 +72,18 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost", "http://localhost:4200", "http://localhost:4200/"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Content-Type", "X-Requested-With", "Origin", "Access-Control-Request-Method",
-                "Access-Control-Request-Headers", "Authorization", "hash4"));
-        config.setAllowCredentials(true);
-        config.getMaxAge();
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
-
-    @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
         // 1. IMPORTANTE: El origen debe coincidir EXACTAMENTE con lo que ves en el
-        // navegador
         config.setAllowedOrigins(List.of("http://localhost:4200"));
 
         // 2. Permitir todos los headers que Angular suele enviar
         config.setAllowedHeaders(List.of("Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"));
 
         // 3. Permitir todos los métodos
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS", "DELETE", "PATCH"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
 
         // 4. Permitir credenciales (JWT, Cookies, etc.)
         config.setAllowCredentials(true);
