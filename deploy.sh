@@ -31,7 +31,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "--- 4. Ejecutando el nuevo contenedor en el puerto 8080 ---"
-docker run -d -p 8080:8080 --name "$CONTAINER_NAME" "$IMAGE_NAME"
+docker compose up -d --build
 
 if [ $? -eq 0 ]; then
     echo "✅ ¡Despliegue completado con éxito! La aplicación está en http://localhost:8080/app/api/auth/login"
