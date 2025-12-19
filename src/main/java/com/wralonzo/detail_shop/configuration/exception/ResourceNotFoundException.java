@@ -1,4 +1,4 @@
-package com.wralonzo.detail_shop.infrastructure.exceptions;
+package com.wralonzo.detail_shop.configuration.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;

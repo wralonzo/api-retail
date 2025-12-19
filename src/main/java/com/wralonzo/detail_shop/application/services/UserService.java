@@ -4,8 +4,8 @@ import com.wralonzo.detail_shop.application.repositories.UserRepository;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
 import com.wralonzo.detail_shop.domain.entities.User;
-import com.wralonzo.detail_shop.infrastructure.exceptions.ResourceConflictException;
-import com.wralonzo.detail_shop.security.JwtUtil;
+import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
+import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,7 +13,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.util.Optional;
 
 

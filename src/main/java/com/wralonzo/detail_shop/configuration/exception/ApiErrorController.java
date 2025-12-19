@@ -1,4 +1,4 @@
-package com.wralonzo.detail_shop.configuration; // O donde guardas tus configuraciones
+package com.wralonzo.detail_shop.configuration.exception; // O donde guardas tus configuraciones
 
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;

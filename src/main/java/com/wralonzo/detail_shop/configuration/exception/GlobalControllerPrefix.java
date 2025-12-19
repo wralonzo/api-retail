@@ -1,4 +1,4 @@
-package com.wralonzo.detail_shop.configuration;
+package com.wralonzo.detail_shop.configuration.exception;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;

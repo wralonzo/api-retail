@@ -4,14 +4,12 @@ import com.wralonzo.detail_shop.application.repositories.ProductRepository;
 import com.wralonzo.detail_shop.domain.dto.product.ProductRequest;
 import com.wralonzo.detail_shop.domain.dto.product.ProductUpdateRequest;
 import com.wralonzo.detail_shop.domain.entities.Product;
-import com.wralonzo.detail_shop.infrastructure.exceptions.ResourceConflictException;
-import com.wralonzo.detail_shop.infrastructure.exceptions.ResourceNotFoundException;
+import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.infrastructure.utils.UpdateUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @AllArgsConstructor

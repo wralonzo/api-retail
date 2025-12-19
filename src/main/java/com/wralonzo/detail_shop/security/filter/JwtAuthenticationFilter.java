@@ -1,6 +1,6 @@
-package com.wralonzo.detail_shop.security.jwt;
+package com.wralonzo.detail_shop.security.filter;
 
-import com.wralonzo.detail_shop.security.JwtUtil;
+import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

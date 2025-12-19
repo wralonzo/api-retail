@@ -1,4 +1,4 @@
-package com.wralonzo.detail_shop.infrastructure.exceptions;
+package com.wralonzo.detail_shop.configuration.exception;
 
 
 import java.time.LocalDateTime;

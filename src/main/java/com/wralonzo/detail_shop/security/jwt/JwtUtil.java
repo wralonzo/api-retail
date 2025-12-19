@@ -1,4 +1,4 @@
-package com.wralonzo.detail_shop.security;
+package com.wralonzo.detail_shop.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

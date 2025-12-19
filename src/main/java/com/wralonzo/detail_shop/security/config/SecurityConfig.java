@@ -1,7 +1,7 @@
-package com.wralonzo.detail_shop.configuration;
+package com.wralonzo.detail_shop.security.config;
 
 import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationEntryPoint;
-import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationFilter;
+import com.wralonzo.detail_shop.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
