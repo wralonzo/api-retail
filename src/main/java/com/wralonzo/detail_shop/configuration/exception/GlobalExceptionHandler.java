@@ -50,6 +50,7 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         ex.printStackTrace(); // Recomendado para depurar
+        System.out.println();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     // Este es el manejador 409

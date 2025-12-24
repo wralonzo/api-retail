@@ -1,8 +1,10 @@
 package com.wralonzo.detail_shop.domain.entities;
 
 import jakarta.persistence.*;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -12,13 +14,18 @@ import java.util.Collections;
 
 @Entity
 @Table(name = "user")
+@EntityListeners(AuditingEntityListener.class)
+@Builder
+@Getter
+@Setter
+@NoArgsConstructor  // <--- ESTA ES LA QUE SOLUCIONA EL ERROR
+@AllArgsConstructor
 public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
 
-    // Métodos de UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList(); // Puedes implementar roles si lo necesitas
@@ -42,82 +49,11 @@ public class User implements UserDetails {
     @Column(name = "password")
     private String password;
 
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdateAt() {
-        return updateAt;
-    }
-
-    public void setUpdateAt(LocalDateTime updateAt) {
-        this.updateAt = updateAt;
-    }
-
-    public LocalDateTime getDeletedAt() {
-        return deletedAt;
-    }
-
-    public void setDeletedAt(LocalDateTime deletedAt) {
-        this.deletedAt = deletedAt;
-    }
-
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
+    @Setter
     @LastModifiedDate
     @Column(name = "update_at", nullable = true, updatable = false)
     private LocalDateTime updateAt;
@@ -141,5 +77,13 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "employee_id" )
+    public Employee employee;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "client_id")
+    public Client client;
 
 }

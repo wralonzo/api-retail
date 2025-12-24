@@ -3,6 +3,8 @@ package com.wralonzo.detail_shop.infrastructure.controllers;
 import com.wralonzo.detail_shop.application.services.UserService;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
+import com.wralonzo.detail_shop.domain.dto.user.UserClient;
+import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
 import com.wralonzo.detail_shop.domain.entities.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,9 +21,15 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<User> createUser(@RequestBody User user){
-        User saveUser = this.userService.createUser(user);
+    @PostMapping("/staff")
+    public ResponseEntity<User> createUser(@RequestBody UserRequest request){
+        User saveUser = this.userService.SaveUser(request);
+        return ResponseEntity.ok(saveUser);
+    }
+
+    @PostMapping("/client")
+    public ResponseEntity<User> createClient(@RequestBody UserClient request){
+        User saveUser = this.userService.SaveClient(request);
         return ResponseEntity.ok(saveUser);
     }
 

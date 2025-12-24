@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "sale_detail")
 @Data
@@ -15,16 +17,36 @@ import lombok.NoArgsConstructor;
 public class SaleDetail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_sale_detail")
     private Long id;
 
-    private Integer quantity;
-    private Double unitPrice;
-
-    @ManyToOne
-    @JoinColumn(name = "sale_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_sale", nullable = false)
     private Sale sale;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_product", nullable = false)
     private Product product;
+
+    @Column(nullable = false)
+    private Integer quantity;
+
+    @Column(name = "price_unit", nullable = false, precision = 12, scale = 2)
+    private BigDecimal priceUnit;
+
+    @Column(precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal discount = BigDecimal.ZERO;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal subtotal;
+
+    @PrePersist
+    @PreUpdate
+    public void calcularSubtotal() {
+        if (quantity != null && priceUnit != null) {
+                BigDecimal total = priceUnit.multiply(BigDecimal.valueOf(quantity));
+            this.subtotal = total.subtract(discount != null ? discount : BigDecimal.ZERO);
+        }
+    }
 }

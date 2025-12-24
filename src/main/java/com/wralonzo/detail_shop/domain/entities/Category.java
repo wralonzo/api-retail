@@ -7,30 +7,31 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
-@Table(name = "credits")
+@Table(name = "categories")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Credit {
+@EntityListeners(AuditingEntityListener.class)
+public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_category")
     private Long id;
 
-    private Double totalAmount;
-    private Double totalPending;
+    @Column(nullable = false, length = 100)
+    private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "client_id")
-    private Client client;
+    @Column(nullable = false, length = 50)
+    private String code;
 
-    @OneToMany(mappedBy = "credit", cascade = CascadeType.ALL)
-    private List<Payment> payments;
+    @Column(nullable = false, length = 100)
+    private String notes;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
@@ -43,4 +44,3 @@ public class Credit {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
-

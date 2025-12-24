@@ -1,52 +1,45 @@
 package com.wralonzo.detail_shop.domain.entities;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import javax.swing.text.Position;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
-@Table(name = "suppliers")
-@Data
+@Table(name = "employee")
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @EntityListeners(AuditingEntityListener.class)
-public class Supplier {
+public class Employee {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_employee")
     private Long id;
 
-    private String name;
-    private String email;
-    private String phone;
-    private String address;
-
-    @Column(name = "company_name", length = 100)
-    private String companyName;
-
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(name = "update_at", nullable = true, updatable = false)
+    @Column(name = "update_at", updatable = false)
     private LocalDateTime updateAt;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL)
-    private List<Product> products;
+    @ManyToOne
+    @JoinColumn(name = "id_warehouse", nullable = false)
+    private Warehouse warehouse;
+
+    @OneToOne(mappedBy = "employee")
+    private User user;
 
     @ManyToOne
-    @JoinColumn(name = "warehouses_id")
-    private Warehouse warehouse;
+    @JoinColumn(name = "id_position_type")
+    private PositionType positionType;
 }

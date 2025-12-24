@@ -20,8 +20,6 @@ public class ProductService {
         Product product = new Product();
         product.setName(productRequest.getName());
         product.setDescription(productRequest.getDescription());
-        product.setPrice(productRequest.getPrice());
-        product.setStock(productRequest.getStock());
         return this.productRepository.save(product);
     }
 
@@ -38,8 +36,6 @@ public class ProductService {
         Product product = this.getById(productRequest.getId());
         UpdateUtil.updateIfPresent(productRequest.getName(), product::setName);
         UpdateUtil.updateIfPresent(productRequest.getDescription(), product::setDescription);
-        UpdateUtil.updateIfPresent(productRequest.getPrice(), product::setPrice);
-        UpdateUtil.updateIfPresent(productRequest.getStock(), product::setStock);
         return productRepository.save(product);
     }
 
@@ -50,8 +46,6 @@ public class ProductService {
 
     public Product updateStock(ProductUpdateRequest productRequest){
         Product product = this.getById(productRequest.getId());
-        Integer stock = productRequest.getStock() + product.getStock();
-        UpdateUtil.updateIfPresent(stock, product::setStock);
         return productRepository.save(product);
     }
 }

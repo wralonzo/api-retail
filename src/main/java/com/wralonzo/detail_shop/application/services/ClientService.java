@@ -21,7 +21,11 @@ public class ClientService {
         return client;
     }
 
-    public List<Client> getAll(){
+    public Client createWithUser(Client payload) {
+        return this.clientRepository.save(payload);
+    }
+
+    public List<Client> getAll() {
         return this.clientRepository.findAll();
     }
 
@@ -32,5 +36,9 @@ public class ClientService {
         client.setEmail(payload.getEmail());
         client.setPhone(payload.getPhone());
         return client;
+    }
+
+    public boolean getClientByEmail(String email) {
+        return this.clientRepository.existsByEmail(email);
     }
 }

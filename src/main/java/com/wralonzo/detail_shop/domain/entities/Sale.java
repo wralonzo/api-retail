@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -18,21 +19,69 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Sale {
+
+    public enum TipoVenta {
+        CONTADO, CREDITO
+    }
+
+    public enum Estado {
+        COMPLETADA, CANCELADA, PENDIENTE,
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_sale")
+    private Long idSale;
 
-    private Double total;
+    @Column(name = "prefix", nullable = false, unique = true, length = 50)
+    private String prefix;
 
-    @ManyToOne
-    @JoinColumn(name = "client_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_client")
     private Client client;
 
-    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_warehouse", nullable = false)
+    private Warehouse warehouse;
+
+    @Column(name = "sale_date", nullable = false)
+    @Builder.Default
+    private LocalDateTime DateSale = LocalDateTime.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sale_type")
+    @Builder.Default
+    private TipoVenta tipoVenta = TipoVenta.CONTADO;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal subtotal = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal discount = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal taxes = BigDecimal.ZERO;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal total = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Estado state = Estado.COMPLETADA;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleDetail> saleDetail;
 
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
     @LastModifiedDate

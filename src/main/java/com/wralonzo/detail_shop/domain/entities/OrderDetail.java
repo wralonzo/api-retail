@@ -35,7 +35,7 @@ public class OrderDetail {
     private Product product;
 
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
     @LastModifiedDate
