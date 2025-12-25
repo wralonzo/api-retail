@@ -2,11 +2,9 @@ package com.wralonzo.detail_shop.domain.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import javax.swing.text.Position;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,6 +12,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Getter
+@Setter
 @EntityListeners(AuditingEntityListener.class)
 public class Employee {
     @Id
@@ -21,11 +21,11 @@ public class Employee {
     @Column(name = "id_employee")
     private Long id;
 
-    @CreatedDate
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
-    @LastModifiedDate
+    @UpdateTimestamp
     @Column(name = "update_at", updatable = false)
     private LocalDateTime updateAt;
 

@@ -2,15 +2,19 @@ package com.wralonzo.detail_shop.domain.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "user")
@@ -25,11 +29,6 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList(); // Puedes implementar roles si lo necesitas
-    }
 
     @Column(name = "full_name")
     private String fullName;
@@ -49,13 +48,19 @@ public class User implements UserDetails {
     @Column(name = "password")
     private String password;
 
-    @CreatedDate
+    @Column(name = "init_password")
+    private String passwordInit;
+
+    @Column()
+    private boolean enabled = true;
+
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
-    @Setter
+    @UpdateTimestamp
     @LastModifiedDate
-    @Column(name = "update_at", nullable = true, updatable = false)
+    @Column(name = "update_at")
     private LocalDateTime updateAt;
 
     @Column(name = "deleted_at")
@@ -76,7 +81,7 @@ public class User implements UserDetails {
     public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() { return true; }
+    public boolean isEnabled() { return this.enabled; }
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "employee_id" )
@@ -86,4 +91,18 @@ public class User implements UserDetails {
     @JoinColumn(name = "client_id")
     public Client client;
 
+    @ManyToMany(fetch = FetchType.EAGER) // EAGER para cargar roles al autenticar
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
+    }
 }

@@ -10,7 +10,7 @@ public class PasswordUtils {
     private static final String LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
     private static final String UPPERCASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final String NUMBERS = "0123456789";
-    private static final String SYMBOLS = "!@#$%^&*()-_=+[]{}";
+    private static final String SYMBOLS = "!@#$&*()-_=";
     private static final String ALL_CHARS = LOWERCASE + UPPERCASE + NUMBERS + SYMBOLS;
 
     private static final SecureRandom random = new SecureRandom();

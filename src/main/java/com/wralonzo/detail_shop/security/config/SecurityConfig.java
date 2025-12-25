@@ -44,7 +44,9 @@ public class SecurityConfig {
                         .requestMatchers(request -> !"TopFashion-Angular-App".equals(request.getHeader("X-App-Origin")))
                         .denyAll()
                         .requestMatchers(org.springframework.web.cors.CorsUtils::isPreFlightRequest).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/staff").permitAll()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/client").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))

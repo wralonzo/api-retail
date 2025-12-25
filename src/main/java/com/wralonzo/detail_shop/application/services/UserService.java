@@ -1,110 +1,56 @@
 package com.wralonzo.detail_shop.application.services;
 
-import com.wralonzo.detail_shop.application.repositories.EmployeeRepository;
-import com.wralonzo.detail_shop.application.repositories.PositionTypeRepository;
-import com.wralonzo.detail_shop.application.repositories.UserRepository;
-import com.wralonzo.detail_shop.application.repositories.WarehouseRepository;
+import com.wralonzo.detail_shop.application.repositories.*;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
-import com.wralonzo.detail_shop.domain.dto.user.UserClient;
-import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
-import com.wralonzo.detail_shop.domain.entities.Client;
+import com.wralonzo.detail_shop.domain.dto.user.UserUpdateRequest;
 import com.wralonzo.detail_shop.domain.entities.Employee;
+import com.wralonzo.detail_shop.domain.entities.Role;
 import com.wralonzo.detail_shop.domain.entities.User;
-import com.wralonzo.detail_shop.infrastructure.utils.PasswordUtils;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 @Service
+@AllArgsConstructor
+@Builder
 public class UserService {
 
     private final UserRepository userRepository;
-    private final EmployeeRepository employeeRepository;
-    private final PasswordEncoder passwordEncoder;
+
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final UserDetailsService userDetailsService;
     private final WarehouseRepository warehouseRepository;
     private final PositionTypeRepository positionTypeRepository;
-    private final ClientService clientService;
-
-    public UserService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder,
-            AuthenticationManager authenticationManager,
-            JwtUtil jwtUtil,
-            UserDetailsService userDetailsService,
-            EmployeeRepository employeeRepository,
-            WarehouseRepository warehouseRepository,
-            PositionTypeRepository positionTypeRepository, ClientService clientService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
-        this.jwtUtil = jwtUtil;
-        this.userDetailsService = userDetailsService;
-        this.employeeRepository = employeeRepository;
-        this.warehouseRepository = warehouseRepository;
-        this.positionTypeRepository = positionTypeRepository;
-        this.clientService = clientService;
-    }
-
-    @Transactional
-    public User SaveUser(UserRequest request) {
-        this.userExist(request.getUser().getUsername());
-        Employee employeeDB = this.createEmployee(request);
-        request.getUser().setEmployee(employeeDB);
-        return this.createUser(request.getUser());
-    }
-
-
-    @Transactional
-    public User SaveClient(UserClient request) {
-        this.userExist(request.getClient().getEmail());
-        if (this.clientService.getClientByEmail(request.getClient().getEmail())) {
-            throw new ResourceConflictException("Cliente " + request.getClient().getEmail() + " ya registrado.");
-        }
-        Client client = this.clientService.createWithUser(request.getClient());
-        User user = new User(
-                null,
-                request.getClient().getName(),
-                request.getClient().getEmail(),
-                request.getClient().getPhone(),
-                request.getClient().getAddress(),
-                "",
-                "",
-                null,
-                null,
-                null,
-                null,
-                client
-        );
-        return this.createUser(user);
-    }
+    private final EmployeeRepository employeeRepository;
+    private  final RoleService roleService;
 
     public LoginResponse login(LoginRequest request) {
-        // 1. Autenticar (Si falla, Spring lanza BadCredentialsException automáticamente)
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
-
-        // 2. Obtener el usuario directamente del objeto de autenticación
-        // Esto evita el problema de casteo si tu UserDetailsService devuelve tu Entidad
         Object principal = auth.getPrincipal();
 
         if (principal instanceof User user) {
             final String jwt = jwtUtil.generateToken(user);
+            List<String> roleNames = user.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toList());
 
             return LoginResponse.builder()
                     .token(jwt)
@@ -117,39 +63,64 @@ public class UserService {
                     .createdAt(user.getCreatedAt())
                     .updateAt(user.getUpdateAt())
                     .deletedAt(user.getDeletedAt())
+                    .roles(roleNames)
                     .build();
         }
 
-        // Si llegas aquí, es que tu UserDetailsService devuelve algo que no es tu Entidad User
         throw new ResourceConflictException("El sistema no pudo recuperar el perfil del usuario.");
-    }
-    private Employee createEmployee(UserRequest request) {
-        Employee employee = Employee.builder()
-                .warehouse(warehouseRepository.findById(request.getWarehouse())
-                        .orElseThrow(() -> new ResourceNotFoundException("Warehouse no encontrado")))
-                .positionType(positionTypeRepository.findById(request.getPositionType())
-                        .orElseThrow(() -> new ResourceNotFoundException("Position no encontrado")))
-                .build();
-        return this.employeeRepository.save(employee);
     }
 
     public Optional<User> findUserByEmail(String email) {
         return this.userRepository.findByUsername(email);
     }
 
-    private User createUser(User user) {
-        String rawPassword = PasswordUtils.generateRandomPassword(12);
-        String hashedPassword = passwordEncoder.encode(rawPassword);
+    @Transactional
+    public void deactivateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
-        user.setPassword(hashedPassword);
-        return this.userRepository.save(user);
+        user.setEnabled(false);
+        user.setDeletedAt(LocalDateTime.now()); // Marcamos la fecha de desactivación
+        userRepository.save(user);
     }
 
-    private Optional<User> userExist(String user){
-        final Optional<User> userFound = this.userRepository.findByUsername(user);
-        if (userFound.isPresent()) {
-            throw new ResourceConflictException("Email " + user + " ya registrado.");
+    @Transactional
+    public void activateUser(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        user.setEnabled(true);
+        user.setDeletedAt(null); // Limpiamos la fecha
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateUser(Long id, UserUpdateRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
+
+        if (request.getFullName() != null) user.setFullName(request.getFullName());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getAddress() != null) user.setAddress(request.getAddress());
+        if (request.getAvatar() != null) user.setAvatar(request.getAvatar());
+        if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
+        Employee employee = user.getEmployee();
+
+        if (request.getWarehouseId() != null) {
+            employee.setWarehouse(warehouseRepository.findById(request.getWarehouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Bodega no encontrada")));
         }
-        return  userFound;
+
+        if (request.getPositionTypeId() != null) {
+            employee.setPositionType(positionTypeRepository.findById(request.getPositionTypeId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Puesto no encontrado")));
+        }
+
+        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            user.setRoles(this.roleService.getRolesFromRequest(request.getRoles()));
+        }
+        employee.setUpdateAt(LocalDateTime.now());
+        user.setUpdateAt(LocalDateTime.now());
+        userRepository.save(user);
     }
 }

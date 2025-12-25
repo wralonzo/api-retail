@@ -20,4 +20,6 @@ public class ClientRequest {
 
     @NotBlank(message = "El campo 'phone' es obligatorio y no debe estar vacío.")
     private String phone;
+
+    private Boolean flagUser;
 }

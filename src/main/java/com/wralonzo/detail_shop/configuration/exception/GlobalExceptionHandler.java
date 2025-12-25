@@ -1,9 +1,11 @@
 package com.wralonzo.detail_shop.configuration.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -121,5 +123,16 @@ public class GlobalExceptionHandler {
                 "message", "Acceso denegado. No tiene permisos para este recurso."
         );
         return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponse> handleDisabledException(DisabledException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(), // Devuelve 401
+                "Esta cuenta ha sido desactivada. Por favor, contacta al administrado",
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }
