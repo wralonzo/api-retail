@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "employee")
@@ -36,10 +37,13 @@ public class Employee {
     @JoinColumn(name = "id_warehouse", nullable = false)
     private Warehouse warehouse;
 
-    @OneToOne(mappedBy = "employee")
-    private User user;
-
     @ManyToOne
     @JoinColumn(name = "id_position_type")
     private PositionType positionType;
+
+    @OneToOne(mappedBy = "employee")
+    private User user;
+
+    @OneToMany(mappedBy = "employee")
+    private List<Reservation> reservation;
 }

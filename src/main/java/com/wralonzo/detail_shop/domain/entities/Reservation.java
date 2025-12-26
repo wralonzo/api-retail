@@ -3,6 +3,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,14 +11,15 @@ import java.time.LocalTime;
 
 @Entity
 @Table(name = "reservations", indexes = {
-        @Index(name = "idx_date", columnList = "fecha_movimiento"),
-        @Index(name = "idx_type", columnList = "tipo_movimiento")
+        @Index(name = "idx_date", columnList = "reservation_date"),
+        @Index(name = "idx_type", columnList = "type")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EntityListeners(AuditingEntityListener.class)
 public class Reservation {
     public enum Estado {
         PROGRAMADA, CONFIRMADA, EN_PROCESO, COMPLETADA, CANCELADA, NO_ASISTIO
@@ -25,19 +27,8 @@ public class Reservation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_cita")
+    @Column(name = "id_reservation")
     private Long id;
-
-    @Column(name = "numero_cita", nullable = false, unique = true, length = 50)
-    private String numeroCita;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_client")
-    private Client client;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_warehouse", nullable = false)
-    private Warehouse warehouse;
 
 
     @Column(name = "reservation_date", nullable = false)
@@ -47,7 +38,7 @@ public class Reservation {
     private LocalTime startTime;
 
     @Column(name = "finish_date", nullable = false)
-    private LocalTime FinishDate;
+    private LocalTime finishDate;
 
     @Column(name = "type", length = 100)
     private String type;
@@ -57,24 +48,28 @@ public class Reservation {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
     private Estado state = Estado.PROGRAMADA;
 
-    @Column(name = "employee", length = 100)
-    private String employee;
-
-
-    @Column(name = "user_creation", length = 100)
-    private String userCreation;
-
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
+    @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(name = "update_at", nullable = true, updatable = false)
+    @Column(name = "update_at", updatable = false)
     private LocalDateTime updateAt;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id")
+    private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private Client client;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id", nullable = false)
+    private Warehouse warehouse;
 }

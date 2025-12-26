@@ -45,7 +45,7 @@ public class Client {
 
     private String address;
 
-    @Column(length = 255)
+    @Column(length = 100)
     private String notes;
 
     @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
@@ -59,6 +59,10 @@ public class Client {
 
     // --- relations
 
+    @ManyToOne(fetch = FetchType.LAZY) // Lazy para no traer el Warehouse si no lo pides
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Order> orders;
 
@@ -68,15 +72,13 @@ public class Client {
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Sale> sales;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Lazy para no traer el Warehouse si no lo pides
-    @JoinColumn(name = "warehouse_id")
-    private Warehouse warehouse;
-
     @OneToOne(mappedBy = "client")
     private User user;
 
-    // audit
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    private List<Reservation> reservation;
 
+    // audit
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;

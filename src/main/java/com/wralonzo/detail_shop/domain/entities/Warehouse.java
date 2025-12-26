@@ -60,4 +60,7 @@ public class Warehouse {
 
     @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL)
     private List<Employee> employee;
+
+    @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL)
+    private List<Reservation> reservation;
 }
