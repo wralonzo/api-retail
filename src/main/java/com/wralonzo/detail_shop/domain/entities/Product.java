@@ -2,10 +2,7 @@ package com.wralonzo.detail_shop.domain.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -14,7 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -23,6 +19,8 @@ import java.util.List;
         @Index(name = "idx_product_name", columnList = "name")
 })
 @EntityListeners(AuditingEntityListener.class)
+@Getter // Solo getters
+@Setter
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,19 +40,17 @@ public class Product {
     private Double priceSale;
 
     @Column(name = "stock_minim")
-    @Builder.Default
     private Integer stockMinim = 0;
 
     @Column(nullable = false, unique = true, length = 50)
     private String sku;
 
     @Column(nullable = false)
-    @Builder.Default
     private Boolean active = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_category")
-    private Category categoria;
+    private Category category;
 
     @ManyToOne
     @JoinColumn(name = "supplier_id")
@@ -71,7 +67,7 @@ public class Product {
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(name = "update_at", nullable = true, updatable = false)
+    @Column(name = "update_at")
     private LocalDateTime updateAt;
 
     @Column(name = "deleted_at")

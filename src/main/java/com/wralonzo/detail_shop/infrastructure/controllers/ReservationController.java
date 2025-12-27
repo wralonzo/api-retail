@@ -3,7 +3,7 @@ package com.wralonzo.detail_shop.infrastructure.controllers;
 import com.wralonzo.detail_shop.application.services.ReservationService;
 import com.wralonzo.detail_shop.domain.dto.reservation.ReservationRequest;
 import com.wralonzo.detail_shop.domain.dto.reservation.ReservationResponse;
-import com.wralonzo.detail_shop.domain.entities.Reservation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +23,7 @@ public class ReservationController {
     private final ReservationService reservationService;
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody ReservationRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody ReservationRequest request) {
         reservationService.create(request);
         return new ResponseEntity<>(request, HttpStatus.CREATED);
     }
@@ -47,7 +47,7 @@ public class ReservationController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ReservationRequest request) {
+    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody ReservationRequest request) {
         return ResponseEntity.ok(reservationService.update(id, request));
     }
 

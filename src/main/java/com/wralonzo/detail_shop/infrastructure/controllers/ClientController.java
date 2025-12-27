@@ -6,13 +6,10 @@ import com.wralonzo.detail_shop.domain.dto.client.ClientUpdateRequest;
 import com.wralonzo.detail_shop.domain.entities.Client;
 import com.wralonzo.detail_shop.infrastructure.adapters.ResponseUtil;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -21,20 +18,21 @@ import java.util.Map;
 public class ClientController {
 
     private final ClientService clientService;
-    public ClientController(ClientService clientService){
+
+    public ClientController(ClientService clientService) {
         this.clientService = clientService;
     }
 
     @PostMapping("")
-    public ResponseEntity<Client> create(@Valid @RequestBody ClientRequest clientRequest){
+    public ResponseEntity<Client> create(@Valid @RequestBody ClientRequest clientRequest) {
         Client client = this.clientService.create(clientRequest);
         return ResponseUtil.created(client, client.getId());
     }
 
     @GetMapping()
-    public ResponseEntity<List<Client>> getAll(){
+    public ResponseEntity<List<Client>> getAll() {
         List<Client> clients = this.clientService.getAll();
-        return  ResponseEntity.ok(clients);
+        return ResponseEntity.ok(clients);
     }
 
     @PatchMapping("/{id}/delete")
@@ -45,7 +43,7 @@ public class ClientController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ClientUpdateRequest> update(@PathVariable Long id, @RequestBody ClientUpdateRequest request) {
+    public ResponseEntity<ClientUpdateRequest> update(@PathVariable Long id, @Valid @RequestBody ClientUpdateRequest request) {
         clientService.update(id, request);
         return ResponseEntity.ok(request);
     }

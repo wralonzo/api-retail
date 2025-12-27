@@ -8,6 +8,7 @@ import com.wralonzo.detail_shop.domain.dto.user.UserClient;
 import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
 import com.wralonzo.detail_shop.domain.dto.user.UserUpdateRequest;
 import com.wralonzo.detail_shop.domain.entities.User;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,19 +27,19 @@ public class UserController {
     }
 
     @PostMapping("/staff")
-    public ResponseEntity<User> createUser(@RequestBody UserRequest request){
+    public ResponseEntity<User> createUser(@Valid @RequestBody UserRequest request){
         User saveUser = this.userCreationService.SaveUser(request);
         return ResponseEntity.ok(saveUser);
     }
 
     @PostMapping("/client")
-    public ResponseEntity<User> createClient(@RequestBody UserClient request){
+    public ResponseEntity<User> createClient(@Valid @RequestBody UserClient request){
         User saveUser = this.userCreationService.SaveClient(request);
         return ResponseEntity.ok(saveUser);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> createUser(@RequestBody LoginRequest user){
+    public ResponseEntity<LoginResponse> createUser(@Valid @RequestBody LoginRequest user){
         LoginResponse saveUser = this.userService.login(user);
         return ResponseEntity.ok(saveUser);
     }
@@ -62,7 +63,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserUpdateRequest> updateUser(
             @PathVariable Long id,
-            @RequestBody UserUpdateRequest request) {
+            @Valid @RequestBody UserUpdateRequest request) {
 
         userService.updateUser(id, request);
         return ResponseEntity.ok(request);

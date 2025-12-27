@@ -19,4 +19,20 @@ public class ProductRequest {
     @NotNull(message = "El stock es obligatorio.")
     @Min(value = 0, message = "El stock no puede ser negativo.")
     private Integer stock;
+
+    private Double pricePurchase;
+
+    private Double priceSale;
+
+    private String barcode;
+
+    private Integer stockMinim;
+
+    private String sku;
+
+    private Long categoryId;
+
+    private Long supplierId;
+
+    private Long warehouseId;
 }

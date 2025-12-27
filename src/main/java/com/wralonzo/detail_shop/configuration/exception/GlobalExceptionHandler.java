@@ -7,8 +7,10 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -28,6 +30,7 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
+
 
     // Maneja excepciones de tipo IllegalArgumentException (ej. validaciones de negocio)
     @ExceptionHandler(IllegalArgumentException.class)
@@ -49,12 +52,13 @@ public class GlobalExceptionHandler {
                 "Error interno del servidor",
                 LocalDateTime.now(),
                 ex.getClass().getSimpleName() +
-                ex.getMessage()
+                        ex.getMessage()
         );
         ex.printStackTrace(); // Recomendado para depurar
         System.out.println();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
     // Este es el manejador 409
     @ExceptionHandler(ResourceConflictException.class)
     public ResponseEntity<ErrorResponse> handleResourceConflictException(ResourceConflictException ex) {
@@ -125,6 +129,24 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
     }
 
+    /**
+     * Maneja el error cuando falta un parámetro requerido en la URL (?param=valor).
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParams(MissingServletRequestParameterException ex) {
+        String message = String.format("Falta el parámetro obligatorio: %s (%s)",
+                ex.getParameterName(), ex.getParameterType());
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message,
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponse> handleDisabledException(DisabledException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
@@ -134,5 +156,27 @@ public class GlobalExceptionHandler {
                 ex.getClass().getSimpleName()
         );
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Maneja errores de tipo de dato en los parámetros (ej. enviar texto en un ID numérico).
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String name = ex.getName();
+        String type = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "desconocido";
+        Object value = ex.getValue();
+
+        String message = String.format("El parámetro '%s' debe ser de tipo %s. Valor recibido: '%s'",
+                name, type, value);
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message,
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
