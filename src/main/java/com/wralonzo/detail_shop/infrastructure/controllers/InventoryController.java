@@ -28,7 +28,7 @@ public class InventoryController {
     @PostMapping("/movement")
     public ResponseEntity<?> processMovement(@Valid @RequestBody InventoryMovementRequest request) {
         inventoryService.processMovement(request);
-        return ResponseEntity.ok(Map.of("message","Movimiento de inventario procesado con éxito"));
+        return ResponseEntity.ok(Map.of("message", "Movimiento de inventario procesado con éxito"));
     }
 
     // Consultar stock de un producto específico en una sucursal
@@ -41,7 +41,7 @@ public class InventoryController {
 
     @PostMapping("/bulk-initialize")
     public ResponseEntity<?> bulkInitialize(@Valid @RequestBody BulkInventoryRequest request) {
-        Map<String, Object> result = inventoryService.bulkInitialize(request);
+        inventoryService.bulkInitialize(request);
         return ResponseEntity.ok(Map.of("message", "Proceso ejecutado con exito"));
     }
 

@@ -2,18 +2,18 @@ package com.wralonzo.detail_shop.application.services;
 
 import com.wralonzo.detail_shop.application.projections.PositionTypeProjection;
 import com.wralonzo.detail_shop.application.repositories.PositionTypeRepository;
-import com.wralonzo.detail_shop.domain.entities.PositionType;
 import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 @Service
 @AllArgsConstructor
 public class PosiontTypeService {
     private final PositionTypeRepository positionTypeRepository;
 
-    public List<PositionTypeProjection> getAll(){
-        return this.positionTypeRepository.findAllProjectedBy();
+    public Page<PositionTypeProjection> getAll(Pageable pageable) {
+        return this.positionTypeRepository.findAllProjectedBy(pageable);
     }
 }

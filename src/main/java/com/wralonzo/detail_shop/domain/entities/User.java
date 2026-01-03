@@ -51,7 +51,7 @@ public class User implements UserDetails {
     @Column(name = "init_password")
     private String passwordInit;
 
-    @Column()
+    @Builder.Default
     private boolean enabled = true;
 
     @CreationTimestamp
@@ -97,6 +97,7 @@ public class User implements UserDetails {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
     @Override

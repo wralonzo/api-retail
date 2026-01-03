@@ -1,11 +1,7 @@
 package com.wralonzo.detail_shop.domain.dto.auth;
 
-import com.wralonzo.detail_shop.domain.entities.User;
-import jakarta.persistence.Column;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,9 +17,13 @@ public class LoginResponse {
     private String address;
     private String avatar;
     private String password;
+    private String passwordInit;
+    private boolean enabled;
     private LocalDateTime createdAt;
     private LocalDateTime updateAt;
     private LocalDateTime deletedAt;
     private List<String> roles;
+    private Long clientId;
+    private EmployeeShortResponse employee;
 
 }

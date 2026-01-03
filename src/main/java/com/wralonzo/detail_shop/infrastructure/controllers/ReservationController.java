@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -30,13 +31,7 @@ public class ReservationController {
 
     @GetMapping
     public ResponseEntity<Page<ReservationResponse>> getAll(
-            @PageableDefault(
-                    page = 0,
-                    size = 10,
-                    sort = "reservationDate",
-                    direction = Sort.Direction.DESC
-            ) Pageable pageable
-    ) {
+            @PageableDefault(page = 0, size = 10, sort = "reservationDate", direction = Sort.Direction.DESC) Pageable pageable) {
         // Ejemplo de uso: GET /api/reservations?page=0&size=5&sort=startTime,asc
         return ResponseEntity.ok(reservationService.getAll(pageable));
     }
@@ -52,6 +47,7 @@ public class ReservationController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         reservationService.delete(id);
         return ResponseEntity.ok(Map.of("message", "Recurso eliminado exitosamente"));

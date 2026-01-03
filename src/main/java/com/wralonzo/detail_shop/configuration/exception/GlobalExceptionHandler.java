@@ -1,6 +1,7 @@
 package com.wralonzo.detail_shop.configuration.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -178,5 +179,23 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
+        String message = "Error de integridad de datos: El registro ya existe o viola una restricción de la base de datos.";
+
+        // Intentamos extraer un mensaje más amigable si es un error de duplicado
+        if (ex.getMessage() != null && ex.getMessage().contains("uk_client_email")) {
+            message = "El correo electrónico ya está registrado en el sistema.";
+        }
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                message,
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName()
+        );
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }

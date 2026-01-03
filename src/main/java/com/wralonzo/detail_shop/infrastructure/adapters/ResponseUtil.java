@@ -21,4 +21,16 @@ public final class ResponseUtil {
         // Devuelve la respuesta 201 con la URI en el encabezado Location y el cuerpo
         return ResponseEntity.created(location).body(resource);
     }
+
+    public static <T> ResponseEntity<T> ok(T resource) {
+        return ResponseEntity.ok(resource);
+    }
+
+    /**
+     * 204 No Content: Úsalo para borrados (DELETE) exitosos
+     * o actualizaciones donde no quieres devolver datos.
+     */
+    public static ResponseEntity<Void> noContent() {
+        return ResponseEntity.noContent().build();
+    }
 }

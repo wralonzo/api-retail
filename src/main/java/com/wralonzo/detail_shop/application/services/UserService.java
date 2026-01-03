@@ -5,26 +5,24 @@ import com.wralonzo.detail_shop.configuration.exception.ResourceConflictExceptio
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
-import com.wralonzo.detail_shop.domain.dto.user.UserUpdateRequest;
+import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
 import com.wralonzo.detail_shop.domain.entities.Employee;
 import com.wralonzo.detail_shop.domain.entities.Role;
 import com.wralonzo.detail_shop.domain.entities.User;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
 
 @Service
 @AllArgsConstructor
@@ -37,34 +35,21 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final WarehouseRepository warehouseRepository;
     private final PositionTypeRepository positionTypeRepository;
-    private final EmployeeRepository employeeRepository;
-    private  final RoleService roleService;
+    private final RoleService roleService;
+    private final UserCreationService userCreationService;
+    private final AuditService auditService;
+
+    @Transactional
 
     public LoginResponse login(LoginRequest request) {
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         Object principal = auth.getPrincipal();
 
         if (principal instanceof User user) {
             final String jwt = jwtUtil.generateToken(user);
-            List<String> roleNames = user.getRoles().stream()
-                    .map(Role::getName)
-                    .collect(Collectors.toList());
+            return userCreationService.converUser(user, jwt);
 
-            return LoginResponse.builder()
-                    .token(jwt)
-                    .id(user.getId())
-                    .username(user.getUsername())
-                    .fullName(user.getFullName())
-                    .phone(user.getPhone())
-                    .address(user.getAddress())
-                    .avatar(user.getAvatar())
-                    .createdAt(user.getCreatedAt())
-                    .updateAt(user.getUpdateAt())
-                    .deletedAt(user.getDeletedAt())
-                    .roles(roleNames)
-                    .build();
         }
 
         throw new ResourceConflictException("El sistema no pudo recuperar el perfil del usuario.");
@@ -95,24 +80,27 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUser(Long id, UserUpdateRequest request) {
+    public void updateUser(Long id, UserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
-        if (request.getFullName() != null) user.setFullName(request.getFullName());
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
-        if (request.getAddress() != null) user.setAddress(request.getAddress());
-        if (request.getAvatar() != null) user.setAvatar(request.getAvatar());
-        if (request.getEnabled() != null) user.setEnabled(request.getEnabled());
+        if (request.getUser().getFullName() != null)
+            user.setFullName(request.getUser().getFullName());
+        if (request.getUser().getPhone() != null)
+            user.setPhone(request.getUser().getPhone());
+        if (request.getUser().getAddress() != null)
+            user.setAddress(request.getUser().getAddress());
+        if (request.getUser().getAvatar() != null)
+            user.setAvatar(request.getUser().getAvatar());
         Employee employee = user.getEmployee();
 
-        if (request.getWarehouseId() != null) {
-            employee.setWarehouse(warehouseRepository.findById(request.getWarehouseId())
+        if (request.getWarehouse() != null) {
+            employee.setWarehouse(warehouseRepository.findById(request.getWarehouse())
                     .orElseThrow(() -> new ResourceNotFoundException("Bodega no encontrada")));
         }
 
-        if (request.getPositionTypeId() != null) {
-            employee.setPositionType(positionTypeRepository.findById(request.getPositionTypeId())
+        if (request.getPositionType() != null) {
+            employee.setPositionType(positionTypeRepository.findById(request.getPositionType())
                     .orElseThrow(() -> new ResourceNotFoundException("Puesto no encontrado")));
         }
 
@@ -123,4 +111,38 @@ public class UserService {
         user.setUpdateAt(LocalDateTime.now());
         userRepository.save(user);
     }
+
+    @Transactional(readOnly = true)
+    public Page<LoginResponse> getAll(String term, String roleName, Pageable pageable) {
+        // 1. Limpiamos los parámetros (Normalización)
+        String cleanTerm = (term != null && !term.trim().isEmpty()) ? term.trim() : null;
+        String cleanRole = (roleName != null && !roleName.trim().isEmpty()) ? roleName.trim() : null;
+
+        // 2. Una sola llamada al repositorio.
+        // El query ya está preparado para ignorar term o roleName si son null.
+        Page<User> users = this.userRepository.findAllWithFilters(cleanTerm, cleanRole, pageable);
+
+        // 3. Mapeo a DTO
+        return users.map(user -> userCreationService.converUser(user, ""));
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse getById(Long id) {
+        User user = this.userRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado"));
+        return userCreationService.converUser(user, "");
+    }
+
+    @Transactional
+    public void updatePassword(Long id, String newPassword, String motive) {
+        // 1. Buscar usuario
+
+        final User user = userCreationService.updatePassword(id, newPassword);
+        // 3. Registrar en Bitácora
+        auditService.logAction(
+                user.getUsername(),
+                "CHANGE_PASSWORD",
+                "El usuario cambió su contraseña por " + motive + ".");
+    }
+
 }

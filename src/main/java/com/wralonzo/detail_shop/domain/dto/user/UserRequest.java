@@ -10,13 +10,15 @@ import java.util.List;
 public class UserRequest {
     private User user;
 
-    @NotBlank(message = "El campo 'positionType' es obligatorio y no debe estar vacío.")
+    @Positive
+    @NotNull(message = "El campo 'positionType' es obligatorio y no debe estar vacío.")
     private Long positionType;
 
-    @Size(message = "La descripción no puede superar los 255 caracteres.")
+    @NotNull(message = "El campo 'warehouse' es obligatorio y no debe estar vacío.")
+    @Positive
     private Long warehouse;
 
-    //example "roles": ["ROLE_VENDEDOR", "ROLE_FACTURADOR"]
+    // example "roles": ["ROLE_VENDEDOR", "ROLE_FACTURADOR"]
     @NotEmpty(message = "El usuario debe tener al menos un rol asignado")
     private List<String> roles;
 }
