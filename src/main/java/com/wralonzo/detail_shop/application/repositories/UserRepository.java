@@ -5,7 +5,10 @@ import com.wralonzo.detail_shop.domain.enums.ProviderRegister;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +16,14 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+
+        // Aquí puedes usar @EntityGraph para cargar las relaciones de forma eficiente
+        // sin causar el error de paginación en memoria de Hibernate.
+        @Override
+        @EntityGraph(attributePaths = { "roles", "employee.warehouse", "employee.positionType" })
+        Page<User> findAll(Specification<User> spec, Pageable pageable);
+
         Optional<User> findByUsername(String username);
 
         @Query("SELECT DISTINCT u FROM User u " +
@@ -23,9 +33,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         "LEFT JOIN FETCH e.positionType " +
                         "WHERE u.client IS NULL " +
                         "AND (:roleName IS NULL OR r.name = :roleName) " +
-                        "AND (:term IS NULL OR (LOWER(CAST(u.username AS text)) LIKE LOWER(CONCAT('%', :term, '%')) "
-                        +
-                        "OR LOWER(CAST(u.fullName AS text)) LIKE LOWER(CONCAT('%', :term, '%'))))")
+                        "AND (:term IS NULL OR :term = '' " +
+                        "     OR LOWER(u.username) LIKE LOWER(CONCAT('%', CAST(:term AS string), '%')) " +
+                        "     OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', CAST(:term AS string), '%')))")
         Page<User> findAllWithFilters(@Param("term") String term,
                         @Param("roleName") String roleName,
                         Pageable pageable);

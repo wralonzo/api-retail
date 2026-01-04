@@ -26,8 +26,8 @@ import java.util.stream.Collectors;
 @Builder
 @Getter
 @Setter
-@NoArgsConstructor // <--- ESTA ES LA QUE SOLUCIONA EL ERROR
 @AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User implements UserDetails {
 
     @Id
@@ -37,7 +37,7 @@ public class User implements UserDetails {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "username")
+    @Column(name = "username", length = 100)
     private String username;
 
     @Column(name = "phone", length = 20)

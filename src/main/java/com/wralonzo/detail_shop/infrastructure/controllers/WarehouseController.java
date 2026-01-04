@@ -2,10 +2,7 @@ package com.wralonzo.detail_shop.infrastructure.controllers;
 
 
 import com.wralonzo.detail_shop.application.projections.WarehouseProjection;
-import com.wralonzo.detail_shop.application.repositories.WarehouseRepository;
 import com.wralonzo.detail_shop.application.services.WarehouseService;
-import com.wralonzo.detail_shop.domain.dto.warehouse.WarehouseResponseDTO;
-import com.wralonzo.detail_shop.domain.entities.Warehouse;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

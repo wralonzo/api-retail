@@ -1,6 +1,7 @@
 package com.wralonzo.detail_shop.application.services;
 
 import com.wralonzo.detail_shop.application.repositories.*;
+import com.wralonzo.detail_shop.application.specifications.UserSpecifications;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
@@ -14,6 +15,7 @@ import lombok.Builder;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -111,14 +113,24 @@ public class UserService {
         userRepository.save(user);
     }
 
+    // @Transactional(readOnly = true)
+    // public Page<LoginResponse> getAll(String term, String roleName, Pageable
+    // pageable) {
+    // String cleanTerm = (term != null && !term.trim().isEmpty()) ? term.trim() :
+    // null;
+    // String cleanRole = (roleName != null && !roleName.trim().isEmpty()) ?
+    // roleName.trim() : null;
+    // Page<User> users = this.userRepository.findAllWithFilters(cleanTerm,
+    // cleanRole, pageable);
+    // return users.map(user -> userCreationService.converUser(user, ""));
+    // }
+
     @Transactional(readOnly = true)
     public Page<LoginResponse> getAll(String term, String roleName, Pageable pageable) {
-        String cleanTerm = (term != null && !term.trim().isEmpty()) ? term.trim() : null;
-        String cleanRole = (roleName != null && !roleName.trim().isEmpty()) ? roleName.trim() : null;
-        Page<User> users = this.userRepository.findAllWithFilters(cleanTerm, cleanRole, pageable);
+        Specification<User> spec = UserSpecifications.filterUsers(term, roleName);
+        Page<User> users = userRepository.findAll(spec, pageable);
         return users.map(user -> userCreationService.converUser(user, ""));
     }
-    
 
     @Transactional(readOnly = true)
     public LoginResponse getById(Long id) {

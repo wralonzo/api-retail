@@ -3,16 +3,9 @@ package com.wralonzo.detail_shop.security.filter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
-import com.wralonzo.detail_shop.application.repositories.UserRepository;
-import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
-import com.wralonzo.detail_shop.domain.entities.User;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 
 import org.springframework.beans.factory.annotation.Value;

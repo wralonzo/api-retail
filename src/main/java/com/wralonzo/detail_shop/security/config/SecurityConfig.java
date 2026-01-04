@@ -1,10 +1,7 @@
 package com.wralonzo.detail_shop.security.config;
 
 import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationEntryPoint;
-import com.wralonzo.detail_shop.security.oauth2.CustomOAuth2UserService;
 import com.wralonzo.detail_shop.security.filter.JwtAuthenticationFilter;
-import com.wralonzo.detail_shop.security.filter.OAuth2AuthenticationSuccessHandler;
-
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -48,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.web.cors.CorsUtils::isPreFlightRequest).permitAll()
                         .requestMatchers("api/auth/google").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/config/google-client-id").permitAll()
                         .requestMatchers(request -> {
                             String path = request.getServletPath();
                             // Si es una ruta de auth o oauth2, no aplicar la restricción del header

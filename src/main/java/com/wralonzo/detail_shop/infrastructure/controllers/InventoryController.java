@@ -1,7 +1,6 @@
 package com.wralonzo.detail_shop.infrastructure.controllers;
 
 import com.wralonzo.detail_shop.application.services.InventoryService;
-import com.wralonzo.detail_shop.configuration.response.ApiResponse;
 import com.wralonzo.detail_shop.domain.dto.inventory.BulkInventoryRequest;
 import com.wralonzo.detail_shop.domain.dto.inventory.InventoryMovementRequest;
 import com.wralonzo.detail_shop.domain.dto.inventory.KardexResponse;
