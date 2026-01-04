@@ -10,6 +10,11 @@ services:
       - "8080:8080"
     # Sobrescribir las variables de Spring Boot directamente aquí
     env_file:
-    - .env
-      
+      - .env
+    environment:
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=${GOOGLE_ID}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=${GOOGLE_SECRET}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_ID=${FACEBOOK_ID}
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_FACEBOOK_CLIENT_SECRET=${FACEBOOK_SECRET}
+     
     restart: always # Opcional: Reinicia automáticamente si falla

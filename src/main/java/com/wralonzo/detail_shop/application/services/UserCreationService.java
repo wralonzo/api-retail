@@ -5,7 +5,6 @@ import com.wralonzo.detail_shop.configuration.exception.ResourceConflictExceptio
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.domain.dto.auth.EmployeeShortResponse;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
-import com.wralonzo.detail_shop.domain.dto.client.ClientResponse;
 import com.wralonzo.detail_shop.domain.dto.user.UserClient;
 import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
 import com.wralonzo.detail_shop.domain.entities.Client;
@@ -18,9 +17,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -48,22 +44,15 @@ public class UserCreationService {
         String newCode = generateClientCode();
         request.getClient().setCode(newCode);
         Client client = this.clientRepository.save(request.getClient());
-        User user = new User(
-                null,
-                request.getClient().getName(),
-                request.getClient().getEmail(),
-                request.getClient().getPhone(),
-                request.getClient().getAddress(),
-                "",
-                "",
-                "",
-                true,
-                null,
-                null,
-                null,
-                null,
-                client,
-                this.roleService.getRolesFromRequest(request.getRoles()));
+        User user = User.builder()
+                .fullName(client.getName())
+                .username(client.getEmail())
+                .phone(client.getPhone())
+                .address(client.getAddress())
+                .enabled(true)
+                .client(client)
+                .roles(this.roleService.getRolesFromRequest(request.getRoles()))
+                .build();
         return this.createUser(user);
     }
 
@@ -138,6 +127,8 @@ public class UserCreationService {
                 .enabled(user.isEnabled())
                 .passwordInit(user.getPasswordInit())
                 .clientId(mapToClientResponse(user.getClient()))
+                .provider(user.getProvider())
+                .lastLoginAt(user.getLastLoginAt())
                 .roles(user.getRoles().stream()
                         .map(Role::getName)
                         .toList())

@@ -7,7 +7,6 @@ import com.wralonzo.detail_shop.domain.dto.auth.LoginRequest;
 import com.wralonzo.detail_shop.domain.dto.auth.LoginResponse;
 import com.wralonzo.detail_shop.domain.dto.user.UserRequest;
 import com.wralonzo.detail_shop.domain.entities.Employee;
-import com.wralonzo.detail_shop.domain.entities.Role;
 import com.wralonzo.detail_shop.domain.entities.User;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 import lombok.AllArgsConstructor;
@@ -114,17 +113,12 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Page<LoginResponse> getAll(String term, String roleName, Pageable pageable) {
-        // 1. Limpiamos los parámetros (Normalización)
         String cleanTerm = (term != null && !term.trim().isEmpty()) ? term.trim() : null;
         String cleanRole = (roleName != null && !roleName.trim().isEmpty()) ? roleName.trim() : null;
-
-        // 2. Una sola llamada al repositorio.
-        // El query ya está preparado para ignorar term o roleName si son null.
         Page<User> users = this.userRepository.findAllWithFilters(cleanTerm, cleanRole, pageable);
-
-        // 3. Mapeo a DTO
         return users.map(user -> userCreationService.converUser(user, ""));
     }
+    
 
     @Transactional(readOnly = true)
     public LoginResponse getById(Long id) {
@@ -135,8 +129,6 @@ public class UserService {
 
     @Transactional
     public void updatePassword(Long id, String newPassword, String motive) {
-        // 1. Buscar usuario
-
         final User user = userCreationService.updatePassword(id, newPassword);
         // 3. Registrar en Bitácora
         auditService.logAction(

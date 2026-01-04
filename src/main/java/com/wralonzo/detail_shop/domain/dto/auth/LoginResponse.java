@@ -6,6 +6,8 @@ import lombok.Data;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.wralonzo.detail_shop.domain.enums.ProviderRegister;
+
 @Data
 @Builder
 public class LoginResponse {
@@ -24,6 +26,8 @@ public class LoginResponse {
     private LocalDateTime deletedAt;
     private List<String> roles;
     private Long clientId;
+    private ProviderRegister provider;
+    private LocalDateTime lastLoginAt;
     private EmployeeShortResponse employee;
 
 }

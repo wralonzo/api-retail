@@ -1,6 +1,7 @@
 package com.wralonzo.detail_shop.application.repositories;
 
 import com.wralonzo.detail_shop.domain.entities.User;
+import com.wralonzo.detail_shop.domain.enums.ProviderRegister;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,8 +21,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         "LEFT JOIN FETCH u.employee e " +
                         "LEFT JOIN FETCH e.warehouse " +
                         "LEFT JOIN FETCH e.positionType " +
-                        "WHERE (:roleName IS NULL OR r.name = :roleName) " +
-                        "AND (:term IS NULL OR (LOWER(CAST(u.username AS text)) LIKE LOWER(CONCAT('%', :term, '%')) " +
+                        "WHERE u.client IS NULL " +
+                        "AND (:roleName IS NULL OR r.name = :roleName) " +
+                        "AND (:term IS NULL OR (LOWER(CAST(u.username AS text)) LIKE LOWER(CONCAT('%', :term, '%')) "
+                        +
                         "OR LOWER(CAST(u.fullName AS text)) LIKE LOWER(CONCAT('%', :term, '%'))))")
         Page<User> findAllWithFilters(@Param("term") String term,
                         @Param("roleName") String roleName,
@@ -29,9 +32,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
         @Query("SELECT u FROM User u " +
                         "LEFT JOIN FETCH u.employee e " +
-                        "LEFT JOIN FETCH e.warehouse " + // <--- Importante para warehouseId/Name
-                        "LEFT JOIN FETCH e.positionType " + // <--- Importante para positionId/Name
+                        "LEFT JOIN FETCH e.warehouse " +
+                        "LEFT JOIN FETCH e.positionType " +
                         "LEFT JOIN FETCH u.roles " +
                         "WHERE u.id = :id")
         Optional<User> findByIdWithDetails(@Param("id") Long id);
+
+        Optional<User> findByProviderAndProviderId(ProviderRegister provider, String providerId);
 }

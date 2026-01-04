@@ -1,7 +1,10 @@
 package com.wralonzo.detail_shop.security.config;
 
 import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationEntryPoint;
+import com.wralonzo.detail_shop.security.oauth2.CustomOAuth2UserService;
 import com.wralonzo.detail_shop.security.filter.JwtAuthenticationFilter;
+import com.wralonzo.detail_shop.security.filter.OAuth2AuthenticationSuccessHandler;
+
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -42,12 +45,17 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(request -> !"TopFashion-Angular-App".equals(request.getHeader("x-app-origin")))
-                        .denyAll()
                         .requestMatchers(org.springframework.web.cors.CorsUtils::isPreFlightRequest).permitAll()
-                        .requestMatchers("/api/auth/staff").permitAll()
+                        .requestMatchers("api/auth/google").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/auth/client").permitAll()
+                        .requestMatchers(request -> {
+                            String path = request.getServletPath();
+                            // Si es una ruta de auth o oauth2, no aplicar la restricción del header
+                            if (path.startsWith("/api/auth/login") || path.startsWith("/api/auth/google")) {
+                                return false;
+                            }
+                            return !"TopFashion-Angular-App".equals(request.getHeader("x-app-origin"));
+                        }).denyAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
@@ -88,8 +96,7 @@ public class SecurityConfig {
                 "X-Requested-With",
                 "Accept",
                 "Origin",
-                "x-app-origin"
-        ));
+                "x-app-origin"));
 
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowCredentials(true);
