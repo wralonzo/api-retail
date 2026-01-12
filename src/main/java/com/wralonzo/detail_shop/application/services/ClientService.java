@@ -39,6 +39,15 @@ public class ClientService {
                             "El almacén con ID " + payload.getWarehouseId() + " no existe"));
         }
         Client client = convertToEntity(payload, warehouse);
+
+        if (payload.getClientType() != null) {
+            client.setClientType(payload.getClientType());
+        }else{
+             client.setClientType(ClientType.REGULAR);
+        }
+        System.out.println("Tipo de cliente");
+
+        System.out.println(client.getClientType().name());
         if (payload.getFlagUser()) {
             List<String> roles = List.of("ROLE_CLIENTE");
 

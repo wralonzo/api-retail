@@ -41,7 +41,6 @@ public class UserService {
     private final AuditService auditService;
 
     @Transactional
-
     public LoginResponse login(LoginRequest request) {
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));

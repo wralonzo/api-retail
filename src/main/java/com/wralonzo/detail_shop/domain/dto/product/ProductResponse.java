@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,8 +20,7 @@ public class ProductResponse {
     private String barcode;
 
     // Precios
-    private Double pricePurchase;
-    private Double priceSale;
+    private BigDecimal priceSale;
 
     // Stock y Estado
     private Integer stockMinim;
@@ -35,6 +35,7 @@ public class ProductResponse {
 
     private Long warehouseId;
     private String warehouseName;
+    private BigDecimal pricePurchase;
 
     // Auditoría (Opcional, útil para el frontend)
     private LocalDateTime createdAt;

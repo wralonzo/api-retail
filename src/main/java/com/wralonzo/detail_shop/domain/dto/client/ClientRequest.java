@@ -1,6 +1,9 @@
 package com.wralonzo.detail_shop.domain.dto.client;
 
 import com.wralonzo.detail_shop.domain.enums.ClientType;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Data;
@@ -31,7 +34,6 @@ public class ClientRequest {
     @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
     private LocalDate birthDate;
 
-    @NotNull(message = "El tipo de cliente es obligatorio")
     private ClientType clientType;
 
     @Positive(message = "ID de almacén inválido")

@@ -1,6 +1,7 @@
 package com.wralonzo.detail_shop.security.config;
 
 import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationEntryPoint;
+import com.wralonzo.detail_shop.configuration.exception.CustomAuthenticationEntryPoint;
 import com.wralonzo.detail_shop.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 
@@ -35,6 +36,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CustomAuthenticationEntryPoint authEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -43,20 +45,16 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.web.cors.CorsUtils::isPreFlightRequest).permitAll()
+                        .requestMatchers(request -> {
+                            return !"TopFashion-Angular-App".equals(request.getHeader("x-app-origin"));
+                        }).denyAll()
                         .requestMatchers("api/auth/google").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/config/google-client-id").permitAll()
-                        .requestMatchers(request -> {
-                            String path = request.getServletPath();
-                            // Si es una ruta de auth o oauth2, no aplicar la restricción del header
-                            if (path.startsWith("/api/auth/login") || path.startsWith("/api/auth/google")) {
-                                return false;
-                            }
-                            return !"TopFashion-Angular-App".equals(request.getHeader("x-app-origin"));
-                        }).denyAll()
                         .anyRequest().authenticated())
-                .exceptionHandling(handling -> handling
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+                .exceptionHandling(exception -> exception
+                        // ESTA ES LA LÍNEA CLAVE
+                        .authenticationEntryPoint(authEntryPoint))
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -86,6 +84,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
+        // config.setAllowedOriginPatterns(List.of("*"));
+
         config.setAllowedOrigins(List.of("http://localhost:4200"));
 
         config.setAllowedHeaders(List.of(
@@ -98,6 +98,10 @@ public class SecurityConfig {
 
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowCredentials(true);
+
+        // IMPORTANTE: Exponer headers si Angular necesita leer algo específico
+        config.setExposedHeaders(List.of("Authorization"));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;

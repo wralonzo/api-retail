@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.client.HttpClientErrorException.BadRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -27,21 +28,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value(),
                 "Recurso no encontrado. La URL o el método de la petición no es válido.",
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-
-    // Maneja excepciones de tipo IllegalArgumentException (ej. validaciones de negocio)
+    // Maneja excepciones de tipo IllegalArgumentException (ej. validaciones de
+    // negocio)
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(), // Usa el mensaje de la excepción para dar detalles
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
@@ -53,8 +52,7 @@ public class GlobalExceptionHandler {
                 "Error interno del servidor",
                 LocalDateTime.now(),
                 ex.getClass().getSimpleName() +
-                        ex.getMessage()
-        );
+                        ex.getMessage());
         ex.printStackTrace(); // Recomendado para depurar
         System.out.println();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -67,8 +65,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 ex.getMessage(),
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
@@ -95,17 +92,27 @@ public class GlobalExceptionHandler {
      * Retorna un código 400 Bad Request.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<Map<String, Object>> handleReadableException(HttpMessageNotReadableException ex) {
+        System.err.println("===== ERROR 400 - PAYLOAD INVÁLIDO =====");
+        System.err.println("Causa: " + ex.getMostSpecificCause().getMessage());
+
+        // Si quieres ver el log completo en 'docker logs'
+        ex.printStackTrace();
         Map<String, Object> response = new HashMap<>();
         response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Bad Request");
-        response.put("message", "El cuerpo de la petición es obligatorio y no debe estar vacío o mal formado.");
+        response.put("exception", "BadRequest");
+
+        // ESTA LÍNEA ES LA CLAVE:
+        // Te dirá: "Cannot deserialize value of type Long from String 'A4340D'"
+        String message = ex.getMostSpecificCause().getMessage();
+        response.put("message", message);
 
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     /**
-     * ✅ NUEVO: Maneja el error 401 No Autorizado cuando las credenciales (usuario/contraseña) son incorrectas.
+     * ✅ NUEVO: Maneja el error 401 No Autorizado cuando las credenciales
+     * (usuario/contraseña) son incorrectas.
      */
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException ex) {
@@ -113,20 +120,19 @@ public class GlobalExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value(), // Devuelve 401
                 "Credenciales de acceso incorrectas. Verifica tu usuario y contraseña.",
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         // ¡Cambiamos el estado a 401 UNAUTHORIZED!
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex) {
         Map<String, Object> errorDetails = Map.of(
                 "timestamp", System.currentTimeMillis(),
                 "status", HttpStatus.FORBIDDEN.value(),
                 "error", "Forbidden",
-                "message", "Acceso denegado. No tiene permisos para este recurso."
-        );
+                "message", "Acceso denegado. No tiene permisos para este recurso.");
         return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
     }
 
@@ -142,8 +148,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 message,
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
@@ -154,13 +159,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.FORBIDDEN.value(), // Devuelve 401
                 "Esta cuenta ha sido desactivada. Por favor, contacta al administrado",
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     /**
-     * Maneja errores de tipo de dato en los parámetros (ej. enviar texto en un ID numérico).
+     * Maneja errores de tipo de dato en los parámetros (ej. enviar texto en un ID
+     * numérico).
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
@@ -175,8 +180,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST.value(),
                 message,
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
@@ -194,8 +198,7 @@ public class GlobalExceptionHandler {
                 HttpStatus.CONFLICT.value(),
                 message,
                 LocalDateTime.now(),
-                ex.getClass().getSimpleName()
-        );
+                ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }

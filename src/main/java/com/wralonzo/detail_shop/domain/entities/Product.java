@@ -1,69 +1,86 @@
 package com.wralonzo.detail_shop.domain.entities;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal; // Recomendado para dinero
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @Table(name = "products", indexes = {
         @Index(name = "idx_product_sku", columnList = "sku"),
         @Index(name = "idx_product_name", columnList = "name")
 })
 @EntityListeners(AuditingEntityListener.class)
-@Getter // Solo getters
+@Getter
 @Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // Protegido para JPA
+@AllArgsConstructor
 public class Product {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_product")
     private Long id;
 
+    @Column(nullable = false, length = 100)
     private String name;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
-
-    @Column(name = "price_purchase")
-    private Double pricePurchase;
-
-    @Column(name = "barcode", length = 50)
-    private String barcode;
-
-    @Column(name = "price_sale")
-    private Double priceSale;
-
-    @Column(name = "stock_minim")
-    private Integer stockMinim = 0;
 
     @Column(nullable = false, unique = true, length = 50)
     private String sku;
 
+    @Column(length = 50)
+    private String barcode;
+
+    // Cambiado a BigDecimal por precisión en cálculos financieros
+    @Column(name = "price_purchase", precision = 12, scale = 2)
+    private BigDecimal pricePurchase;
+
+    @Column(name = "price_sale", precision = 12, scale = 2)
+    private BigDecimal priceSale;
+
+    @Builder.Default
+    @Column(name = "stock_minim", nullable = false)
+    private Integer stockMinim = 0;
+
+    @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;
 
+    // RELACIONES - Se añadió FetchType.LAZY por defecto para rendimiento
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_category")
     private Category category;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
-    @OneToMany(mappedBy = "product")
-    private List<SaleDetail> saleDetail;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouses_id")
+    private Warehouse warehouse;
 
-    @OneToMany(mappedBy = "product")
-    private List<OrderDetail> orderDetail;
+    // Colecciones inicializadas para evitar NullPointerException
+    @Builder.Default
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SaleDetail> saleDetails = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderDetail> orderDetails = new ArrayList<>();
+
+    // AUDITORÍA
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
@@ -72,9 +89,4 @@ public class Product {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
-    @ManyToOne
-    @JoinColumn(name = "warehouses_id")
-    private Warehouse warehouse;
 }
-

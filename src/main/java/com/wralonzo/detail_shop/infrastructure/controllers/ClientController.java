@@ -58,7 +58,7 @@ public class ClientController {
     @PatchMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody ClientRequest request) {
         clientService.update(id, request);
-        return ResponseUtil.ok(Map.of("message", "Recurso eliminado exitosamente"));
+        return ResponseUtil.ok(Map.of("message", "Recurso actualizado exitosamente"));
     }
 
     @GetMapping("/{id}/user")
