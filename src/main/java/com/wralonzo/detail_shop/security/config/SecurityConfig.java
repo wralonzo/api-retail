@@ -1,6 +1,5 @@
 package com.wralonzo.detail_shop.security.config;
 
-import com.wralonzo.detail_shop.security.jwt.JwtAuthenticationEntryPoint;
 import com.wralonzo.detail_shop.configuration.exception.CustomAuthenticationEntryPoint;
 import com.wralonzo.detail_shop.security.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final CustomAuthenticationEntryPoint authEntryPoint;
 
     @Bean
@@ -51,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("api/auth/google").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/config/google-client-id").permitAll()
+                        // .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN", "SELLER")
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception
                         // ESTA ES LA LÍNEA CLAVE

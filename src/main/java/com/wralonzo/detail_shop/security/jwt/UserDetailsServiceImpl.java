@@ -1,11 +1,12 @@
 package com.wralonzo.detail_shop.security.jwt;
 
-import com.wralonzo.detail_shop.application.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 
 @Service
 @RequiredArgsConstructor
