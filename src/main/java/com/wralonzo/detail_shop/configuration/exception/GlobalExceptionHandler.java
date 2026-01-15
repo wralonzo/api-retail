@@ -13,7 +13,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
@@ -189,61 +188,20 @@ public class GlobalExceptionHandler {
     /**
      * Maneja errores de tipo de dato en los parámetros (ej. enviar texto en un ID
      * numérico).
-     */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String name = ex.getName();
-        String type = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "desconocido";
-        Object value = ex.getValue();
-
-        String message = String.format("El parámetro '%s' debe ser de tipo %s. Valor recibido: '%s'",
-                name, type, value);
-
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                message,
-                LocalDateTime.now(),
-                ex.getClass().getSimpleName());
-
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
-
+     */// Manejador consolidado para INTEGRIDAD DE DATOS (Intercepción dinámica)
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
-        String message = "Error de integridad de datos: El registro ya existe o viola una restricción de la base de datos.";
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String rootMsg = ex.getMostSpecificCause().getMessage().toLowerCase();
+        String friendlyMessage = "Error de integridad: El registro viola una restricción de la base de datos.";
 
-        // Intentamos extraer un mensaje más amigable si es un error de duplicado
-        if (ex.getMessage() != null && ex.getMessage().contains("uk_client_email")) {
-            message = "El correo electrónico ya está registrado en el sistema.";
-        }
-
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.CONFLICT.value(),
-                message,
-                LocalDateTime.now(),
-                ex.getClass().getSimpleName());
-        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * Captura errores de integridad (Duplicate Key, Foreign Key violation, etc.)
-     * Evita mostrar el log técnico y devuelve mensajes limpios.
-     */
-    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
-    public ResponseEntity<ErrorResponse> handleDataIntegrity(
-            org.springframework.dao.DataIntegrityViolationException ex) {
-        String rootMsg = ex.getMostSpecificCause().getMessage();
-        String friendlyMessage = "No se pudo completar la acción porque los datos no cumplen con las reglas de integridad.";
-
-        // Lógica dinámica para identificar el tipo de error sin try-catch en el service
-        if (rootMsg.contains("duplicate key")) {
-            friendlyMessage = "Operación fallida: Ya existe un registro con estos datos únicos.";
+        if (rootMsg.contains("duplicate key") || rootMsg.contains("unique constraint")) {
+            friendlyMessage = "Ya existe un registro con estos datos únicos.";
             if (rootMsg.contains("username"))
                 friendlyMessage = "El nombre de usuario ya está en uso.";
-            if (rootMsg.contains("email"))
+            if (rootMsg.contains("email") || rootMsg.contains("uk_client_email"))
                 friendlyMessage = "El correo electrónico ya está registrado.";
         } else if (rootMsg.contains("violates foreign key constraint")) {
-            friendlyMessage = "No se puede realizar la operación. El registro está relacionado con otra información (Llave foránea).";
+            friendlyMessage = "No se puede realizar la operación porque el registro está relacionado con otra información.";
         } else if (rootMsg.contains("violates not-null constraint")) {
             friendlyMessage = "Faltan campos obligatorios para completar la operación.";
         }

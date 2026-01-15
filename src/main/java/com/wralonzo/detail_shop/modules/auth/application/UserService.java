@@ -11,7 +11,6 @@ import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserReposit
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.specs.UserSpecifications;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
@@ -26,9 +25,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -43,7 +39,6 @@ public class UserService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final UserCreationService userCreationService;
     private final AuditService auditService;
     private final UserMapper userMapper;
     private final PasswordHistoryService passwordHistoryService;
@@ -103,63 +98,53 @@ public class UserService {
 
     @Transactional
     public void updatePassword(Long id, ChangePasswordRequest changeRequest) throws BadRequestException {
-        // 1 & 2. Metadatos de Red
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
-                .currentRequestAttributes();
-        HttpServletRequest httpRequest = attributes.getRequest();
-        String auditMetadata = " [IP: " + getClientIp(httpRequest) + " | Dispositivo: "
-                + httpRequest.getHeader("User-Agent") + "]";
-
-        // 3. Obtener Ejecutor
+        // 1. Obtener Ejecutor
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResourceUnauthorizedException("No hay una sesión activa");
         }
         User userExecutor = (User) authentication.getPrincipal();
 
-        // 4 & 5. Permisos
+        // 2. Permisos
+
         boolean isAdmin = userExecutor.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         if (!isAdmin && !userExecutor.getId().equals(id)) {
             throw new ResourceUnauthorizedException("No tienes permiso para cambiar la contraseña de otro usuario.");
         }
 
-        // 6. Obtener Usuario Objetivo
+        // 3. Obtener Usuario Objetivo
         User userTarget = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
-        // 7. NUEVO: Validar Fortaleza de la Contraseña
+        // 4. NUEVO: Validar Fortaleza de la Contraseña
+        // Validar intentos sospechosos antes de procesar nada
+        auditService.validatePasswordChangeAttempts(userTarget.getUsername(), "CHANGE_PASSWORD");
+        auditService.validateIpAbuseThreshold(changeRequest.getIpLocal(), "CHANGE_PASSWORD");
+        // Validar historial
         this.validatePasswordComplexity(changeRequest.getNewPassword());
 
-        // 8. Validar Historial (Lanza excepción si es una de las últimas 5)
+        // 5. Validar Historial (Lanza excepción si es una de las últimas 5)
         // Nota: Debes pasar la nueva contraseña SIN encriptar para que el matches
         // funcione dentro
         this.passwordHistoryService.validatePasswordHistory(userTarget, changeRequest.getNewPassword());
 
-        // 9. Actualizar Entidad
+        // 6. Actualizar Entidad
         userTarget.setPassword(passwordEncoder.encode(changeRequest.getNewPassword()));
         userTarget.setPasswordLastChangedAt(LocalDateTime.now());
         userRepository.save(userTarget);
 
-        // 10. Auditoría
+        // 7. Auditoría
         auditService.logAction(
-                userExecutor.getUsername(),
+                userTarget.getUsername(),
                 "CHANGE_PASSWORD",
                 "El usuario: " + userExecutor.getUsername() +
                         " actualizó la contraseña de: " + userTarget.getUsername() +
                         " motivo: " + changeRequest.getMotive(),
                 changeRequest.getChannel(),
-                auditMetadata);
+                changeRequest.getIpLocal());
     }
 
-    // Método de soporte para capturar la IP real (detrás de proxies)
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
 
     private void validatePasswordComplexity(String password) throws BadRequestException {
         // Mínimo 8 caracteres, máximo 20

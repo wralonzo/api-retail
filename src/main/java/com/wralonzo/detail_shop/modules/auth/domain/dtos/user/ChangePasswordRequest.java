@@ -15,4 +15,6 @@ public class ChangePasswordRequest {
   @Size(max = 60, message = "El canal no debe estar vacío")
   private String channel;
 
+  private String ipLocal;
+
 }
