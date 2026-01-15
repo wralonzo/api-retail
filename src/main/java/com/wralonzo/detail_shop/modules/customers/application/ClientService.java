@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import com.wralonzo.detail_shop.modules.organization.application.CompanyService;
@@ -38,10 +39,12 @@ public class ClientService {
     private final ProfileService profileService;
     private final CompanyService companyService;
 
-    @Transactional
+    @Transactional // Importante: si falla la creación del cliente, debe revertirse el usuario
     public ClientResponse createFullClient(FullClientCreateRequest request) {
-        if (request.getClient().getCompanyId() != null) {
-            companyService.getById(request.getClient().getCompanyId());
+        Long userCompanyId = companyService.getCurrentUserCompanyId();
+
+        if (userCompanyId != null) {
+            companyService.getById(userCompanyId);
         }
 
         User userNew = null;
@@ -60,9 +63,10 @@ public class ClientService {
         Client client = Client.builder()
                 .userId(userNew != null ? userNew.getId() : null)
                 .profileId(profile.getId())
-                .clientCode(clientCode) // Solo una vez
+                .code(clientCode) // Solo una vez
                 .clientType(request.getClient().getClientType())
-                .companyId(request.getClient().getCompanyId())
+                .companyId(userCompanyId)
+                .preferredDeliveryAddress(request.getClient().getPreferredDeliveryAddress())
                 .taxId(request.getClient().getTaxId())
                 .active(true)
                 .build();
@@ -75,18 +79,18 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponse> searchFullClients(String term, ClientType type, Pageable pageable) {
-        // 1. Obtener IDs de coincidencia desde el módulo Auth (Identidad)
-        List<Long> userIdsFromAuth = term != null ? authService.findUserIdsByProfileOrUsername(term) : null;
-        // Opcional: Si buscas por nombre de perfil, podrías necesitar también
-        // profileIds
-        // List<Long> profileIdsFromAuth = term != null ?
-        // authService.findProfileIdsByTerm(term) : null;
+        Long userCompanyId = companyService.getCurrentUserCompanyId();
 
-        // 2. Combinar especificaciones (AND para filtros, OR interno para el término)
+        List<Long> profileIdsFromAuth = (term != null && !term.isBlank())
+                ? profileService.findIdsByTerm(term)
+                : Collections.emptyList();
+
+        /// 2. Combinar especificaciones
         Specification<Client> spec = Specification
-                .where(ClientSpecifications.isNotDeleted()) // Filtro base: No eliminados
-                .and(ClientSpecifications.hasClientType(type)) // Filtro por combo: Empresa/Persona
-                .and(ClientSpecifications.containsTerm(term, userIdsFromAuth)); // Búsqueda por texto
+                .where(ClientSpecifications.isNotDeleted())
+                .and(ClientSpecifications.hasClientType(type))
+                .and(ClientSpecifications.hasCompanyId(userCompanyId))
+                .and(ClientSpecifications.containsTerm(term, profileIdsFromAuth));
 
         Page<Client> clientsPage = clientRepository.findAll(spec, pageable);
 
@@ -108,8 +112,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public ClientResponse getById(Long id) {
-        Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceConflictException("Registro no encontradoF"));
+        Client client = findOneById(id);
         Profile profile = null;
         User user = null;
         if (client.getUserId() != null) {
@@ -125,8 +128,7 @@ public class ClientService {
 
     @Transactional
     public void delete(Long id) {
-        Client client = this.clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado con ID: " + id));
+        Client client = findOneById(id);
         if (client.getUserId() != null) {
             userClientService.deleteUser(client.getId());
         }
@@ -140,8 +142,7 @@ public class ClientService {
 
     @Transactional
     public ClientResponse update(Long id, FullClientCreateRequest request) {
-        Client client = this.clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceConflictException("Recurso no encontrado: " + id));
+        Client client = findOneById(id);
 
         // 1. Actualizar perfil
         Profile profile = profileService.update(client.getProfileId(), request.getAuth());
@@ -167,13 +168,28 @@ public class ClientService {
 
     @Transactional
     public ClientResponse createUser(Long id) {
-        Client client = this.clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado"));
+        Client client = findOneById(id);
+
         Profile profile = this.profileService.getById(client.getProfileId());
-        User user = this.userClientService.createUser(profile.getEmail());
+        User user = this.userClientService.createUser(profile);
+        client.setUserId(user.getId());
+        client.setUpdatedAt(LocalDateTime.now());
+        clientRepository.save(client);
 
         return clientMapper.toResponse(client, profile, user);
 
+    }
+
+    @Transactional(readOnly = true)
+    private Client findOneById(Long id) {
+        Long userCompanyId = companyService.getCurrentUserCompanyId();
+        Specification<Client> spec = Specification
+                .where(ClientSpecifications.isNotDeleted())
+                .and(ClientSpecifications.hasCompanyId(userCompanyId))
+                .and((root, query, cb) -> cb.equal(root.get("id"), id));
+
+        return clientRepository.findOne(spec)
+                .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado"));
     }
 
     public String generateClientCode() {

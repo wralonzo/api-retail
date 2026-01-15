@@ -28,18 +28,14 @@ public class Client {
     private Long id;
 
     // --- RELACIÓN POR ID (Desacoplado) ---
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(name = "user_id", unique = true)
     private Long userId;
 
     @Column(name = "profile_id", nullable = false) // Ahora es obligatorio tener perfil
     private Long profileId;
 
-    @Column(name = "company_id", nullable = false, unique = true)
+    @Column(name = "company_id", nullable = false)
     private Long companyId;
-
-    // --- DATOS ESPECÍFICOS DE CLIENTE ---
-    @Column(name = "client_code", unique = true, length = 20)
-    private String clientCode;
 
     @Column(name = "tax_id", length = 20) // NIT / RUT / RFC para facturación
     private String taxId;

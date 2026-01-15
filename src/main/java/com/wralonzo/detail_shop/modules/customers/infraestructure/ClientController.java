@@ -48,7 +48,7 @@ public class ClientController {
     }
 
     @PatchMapping("/{id}/delete")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<?> deactivate(@PathVariable Long id) {
         clientService.delete(id);
         return ResponseUtil.ok(Map.of("message", "Recurso eliminado exitosamente"));
@@ -62,7 +62,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}/user")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ClientResponse> createUser(@PathVariable(required = true) Long id) {
         ClientResponse client = this.clientService.createUser(id);
         return ResponseUtil.ok(client);

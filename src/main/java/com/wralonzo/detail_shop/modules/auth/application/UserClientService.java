@@ -1,11 +1,8 @@
 package com.wralonzo.detail_shop.modules.auth.application;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +14,6 @@ import com.wralonzo.detail_shop.modules.auth.domain.enums.ProviderRegister;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Profile;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Role;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
-import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.RoleRepository;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 
 import lombok.AllArgsConstructor;
@@ -46,7 +42,7 @@ public class UserClientService {
         .build();
 
     // 3. Buscar los roles (o asignar uno por defecto)
-    List<String> roleNames = List.of("ROLE_CLIENT");
+    List<String> roleNames = List.of("ROLE_CLIENTE");
 
     // Buscamos las entidades reales en la DB
     Set<Role> userRoles = roleService.getRolesFromRequest(roleNames);
@@ -92,22 +88,25 @@ public class UserClientService {
     return user;
   }
 
-  public User createUser(String username) {
-    User userExist = userRepository.findByUsername(username).orElse(null);
+  public User createUser(Profile profile) {
+    User userExist = userRepository.findByUsername(profile.getEmail()).orElse(null);
     if (userExist != null) {
-      userExist.setUsername((int) (Math.random() * 10000) + "_" + username);
+      profile.setEmail((int) (Math.random() * 10000) + "_" + profile.getEmail());
     }
-    List<String> rolesNames = List.of("ROLE_CLIENT");
+    List<String> rolesNames = List.of("ROLE_CLIENTE");
     String rawPassword = PasswordUtils.generateRandomPassword(12);
     String hashedPassword = passwordEncoder.encode(rawPassword);
     Set<Role> userRoles = roleService.getRolesFromRequest(rolesNames);
 
     User user = User.builder()
+        .username(profile.getEmail())
+        .profile(profile)
         .password(hashedPassword)
         .passwordInit(rawPassword)
         .provider(ProviderRegister.LOCAL)
         .enabled(true)
         .roles(userRoles)
+        .passwordLastChangedAt(LocalDateTime.now())
         .build();
     return userRepository.save(user);
   }

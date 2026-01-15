@@ -7,6 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.coyote.BadRequestException;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Profile;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.ProfileRepository;
+import com.wralonzo.detail_shop.modules.auth.domain.jpa.specs.ProfileSpecifications;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.UserCreateRequest;
 
@@ -25,6 +27,7 @@ public class ProfileService {
 
   @Transactional
   public Profile save(UserCreateRequest request) {
+    emailExist(request.getEmail());
     Profile profile = Profile.builder()
         .fullName(request.getFullName())
         .phone(request.getPhone())
@@ -117,5 +120,27 @@ public class ProfileService {
               "El correo electrónico " + newEmail + " ya está registrado por otro usuario.");
 
         });
+  }
+
+  /**
+   * Busca perfiles que coincidan con el término en fullName, email o phone
+   * y retorna solo sus IDs.
+   */
+  @Transactional(readOnly = true)
+  public List<Long> findIdsByTerm(String term) {
+    if (term == null || term.isBlank()) {
+      return List.of();
+    }
+
+    // Usamos especificaciones para una búsqueda flexible
+    Specification<Profile> spec = Specification
+        .where(ProfileSpecifications.isNotDeleted())
+        .and(ProfileSpecifications.containsTerm(term));
+
+    // Obtenemos las entidades y extraemos los IDs
+    return profileRepository.findAll(spec)
+        .stream()
+        .map(Profile::getId)
+        .collect(Collectors.toList());
   }
 }

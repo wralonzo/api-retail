@@ -36,5 +36,5 @@ public class UserCreateRequest {
   private String address;
   private String avatar;
 
-  private Set<String> roles; // Nombres de los roles (ej: "ROLE_CLIENT")
+  private Set<String> roles; // Nombres de los roles (ej: "ROLE_CLIENTE")
 }

@@ -19,7 +19,7 @@ public class ClientSpecifications {
         : cb.equal(root.get("clientType"), clientType);
   }
 
-  public static Specification<Client> containsTerm(String term, List<Long> userIdsFromAuth) {
+  public static Specification<Client> containsTerm(String term, List<Long> profileIdsFromAuth) {
     return (root, query, cb) -> {
       if (term == null || term.trim().isEmpty()) {
         return cb.conjunction();
@@ -29,21 +29,26 @@ public class ClientSpecifications {
 
       // Predicados de búsqueda local (Customers)
       var localPredicate = cb.or(
-          cb.like(cb.lower(root.get("clientCode")), pattern),
+          cb.like(cb.lower(root.get("code")), pattern),
           cb.like(cb.lower(root.get("taxId")), pattern));
 
       // Si el módulo Auth encontró coincidencias en identidades
-      if (userIdsFromAuth != null && !userIdsFromAuth.isEmpty()) {
-        localPredicate = cb.or(localPredicate, root.get("userId").in(userIdsFromAuth));
-      }
 
       // TIP: Si también tienes profileIds de Auth, añádelos aquí:
-      // if (profileIdsFromAuth != null && !profileIdsFromAuth.isEmpty()) {
-      // localPredicate = cb.or(localPredicate,
-      // root.get("profileId").in(profileIdsFromAuth));
-      // }
+      if (profileIdsFromAuth != null && !profileIdsFromAuth.isEmpty()) {
+        localPredicate = cb.or(localPredicate,
+            root.get("profileId").in(profileIdsFromAuth));
+      }
 
       return localPredicate;
+    };
+  }
+
+  public static Specification<Client> hasCompanyId(Long companyId) {
+    return (root, query, cb) -> {
+      if (companyId == null)
+        return null;
+      return cb.equal(root.get("companyId"), companyId);
     };
   }
 }
