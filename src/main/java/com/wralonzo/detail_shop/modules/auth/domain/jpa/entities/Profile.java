@@ -37,7 +37,7 @@ public class Profile {
   @Column(name = "phone", length = 20)
   private String phone;
 
-  @Column(length = 20)
+  @Column(length = 100)
   private String email;
 
   @Column(name = "address")

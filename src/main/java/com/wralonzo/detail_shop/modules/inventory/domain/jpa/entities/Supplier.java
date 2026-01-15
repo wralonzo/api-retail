@@ -8,11 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
-
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "suppliers", schema = "inventory")
@@ -48,9 +44,6 @@ public class Supplier {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL)
-    private List<Product> products;
-
-    @Column(name = "warehouses_id")
-    private Warehouse warehouse;
+    @Column(name = "warehouse_id")
+    private Long warehouseId;
 }

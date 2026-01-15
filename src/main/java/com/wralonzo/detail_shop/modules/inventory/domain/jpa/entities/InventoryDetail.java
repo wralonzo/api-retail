@@ -7,8 +7,6 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -38,7 +36,7 @@ public class InventoryDetail {
     private Product product;
 
     @Column(name = "warehouse_id", nullable = false)
-    private Warehouse warehouseId;
+    private long warehouseId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type_detail", nullable = false)

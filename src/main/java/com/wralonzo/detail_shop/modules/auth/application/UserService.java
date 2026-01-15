@@ -2,32 +2,37 @@ package com.wralonzo.detail_shop.modules.auth.application;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
+import com.wralonzo.detail_shop.configuration.exception.ResourceUnauthorizedException;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.LoginRequest;
-import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.LoginResponse;
-import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Employee;
+import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.ChangePasswordRequest;
+import com.wralonzo.detail_shop.modules.auth.domain.mapper.records.LoginResponse;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.specs.UserSpecifications;
 import com.wralonzo.detail_shop.security.jwt.JwtUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
+import org.apache.coyote.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+
 import com.wralonzo.detail_shop.modules.auth.domain.mapper.user.UserMapper;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
 
 @Service
 @AllArgsConstructor
@@ -40,29 +45,20 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final UserCreationService userCreationService;
     private final AuditService auditService;
-    private final WarehouseService warehouseService;
     private final UserMapper userMapper;
+    private final PasswordHistoryService passwordHistoryService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
         Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
-        Object principal = auth.getPrincipal();
 
-        if (principal instanceof User user) {
-            final String jwt = jwtUtil.generateToken(user);
-            Warehouse warehouse = warehouseService.getById(user.getEmployee().getWarehouseId());
-            return LoginResponse.builder()
-                    .id(user.getId())
-                    .token(jwt)
-                    .user(userMapper.toShortResponse(user)) // Mapper que ya configuramos
-                    .employee(user.getEmployee())
-                    .warehouse(warehouse)
-                    .build();
+        User user = (User) auth.getPrincipal();
+        final String jwt = jwtUtil.generateToken(user);
 
-        }
-
-        throw new ResourceConflictException("El sistema no pudo recuperar el perfil del usuario.");
+        // Mapeamos el objeto con toda la información incluida
+        return userMapper.toLoginResponse(user, jwt);
     }
 
     public Optional<User> findUserByEmail(String email) {
@@ -91,33 +87,10 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public Page<LoginResponse> getAll(String term, String roleName, Pageable pageable) {
-        // 1. Obtener la página de usuarios con sus empleados (usando Specifications)
         Specification<User> spec = UserSpecifications.filterUsers(term, roleName);
         Page<User> users = userRepository.findAll(spec, pageable);
-
-        // 2. Optimización: Extraer todos los IDs de Warehouse únicos de la página
-        // actual
-        List<Long> warehouseIds = users.getContent().stream()
-                .map(u -> u.getEmployee() != null ? u.getEmployee().getWarehouseId() : null)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
-
-        // 3. Cargar todos los Almacenes necesarios en una sola consulta
-        Map<Long, Warehouse> warehouseMap = warehouseService.getWarehousesMap(warehouseIds);
-
-        // 4. Mapear la página de User a LoginResponse
         return users.map(user -> {
-            Employee employee = user.getEmployee();
-            Warehouse warehouse = (employee != null) ? warehouseMap.get(employee.getWarehouseId()) : null;
-
-            return LoginResponse.builder()
-                    .id(user.getId())
-                    .token("") // En listados no se suele enviar el token
-                    .user(userMapper.toShortResponse(user))
-                    .employee(employee)
-                    .warehouse(warehouse)
-                    .build();
+            return userMapper.toLoginResponse(user, "");
         });
     }
 
@@ -125,23 +98,88 @@ public class UserService {
     public LoginResponse getById(Long id) {
         User user = this.userRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceConflictException("Usuario no encontrado"));
-        Warehouse warehouse = warehouseService.getById(user.getEmployee().getWarehouseId());
-        return LoginResponse.builder()
-                .id(user.getId())
-                .token("")
-                .user(userMapper.toShortResponse(user)) // Mapper que ya configuramos
-                .employee(user.getEmployee())
-                .warehouse(warehouse)
-                .build();
+        return userMapper.toLoginResponse(user, "");
     }
 
     @Transactional
-    public void updatePassword(Long id, String newPassword, String motive) {
-        final User user = userCreationService.updatePassword(id, newPassword);
-        // 3. Registrar en Bitácora
+    public void updatePassword(Long id, ChangePasswordRequest changeRequest) throws BadRequestException {
+        // 1 & 2. Metadatos de Red
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
+                .currentRequestAttributes();
+        HttpServletRequest httpRequest = attributes.getRequest();
+        String auditMetadata = " [IP: " + getClientIp(httpRequest) + " | Dispositivo: "
+                + httpRequest.getHeader("User-Agent") + "]";
+
+        // 3. Obtener Ejecutor
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResourceUnauthorizedException("No hay una sesión activa");
+        }
+        User userExecutor = (User) authentication.getPrincipal();
+
+        // 4 & 5. Permisos
+        boolean isAdmin = userExecutor.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin && !userExecutor.getId().equals(id)) {
+            throw new ResourceUnauthorizedException("No tienes permiso para cambiar la contraseña de otro usuario.");
+        }
+
+        // 6. Obtener Usuario Objetivo
+        User userTarget = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        // 7. NUEVO: Validar Fortaleza de la Contraseña
+        this.validatePasswordComplexity(changeRequest.getNewPassword());
+
+        // 8. Validar Historial (Lanza excepción si es una de las últimas 5)
+        // Nota: Debes pasar la nueva contraseña SIN encriptar para que el matches
+        // funcione dentro
+        this.passwordHistoryService.validatePasswordHistory(userTarget, changeRequest.getNewPassword());
+
+        // 9. Actualizar Entidad
+        userTarget.setPassword(passwordEncoder.encode(changeRequest.getNewPassword()));
+        userTarget.setPasswordLastChangedAt(LocalDateTime.now());
+        userRepository.save(userTarget);
+
+        // 10. Auditoría
         auditService.logAction(
-                user.getUsername(),
+                userExecutor.getUsername(),
                 "CHANGE_PASSWORD",
-                "El usuario cambió su contraseña por " + motive + ".");
+                "El usuario: " + userExecutor.getUsername() +
+                        " actualizó la contraseña de: " + userTarget.getUsername() +
+                        " motivo: " + changeRequest.getMotive(),
+                changeRequest.getChannel(),
+                auditMetadata);
+    }
+
+    // Método de soporte para capturar la IP real (detrás de proxies)
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    private void validatePasswordComplexity(String password) throws BadRequestException {
+        // Mínimo 8 caracteres, máximo 20
+        if (password.length() < 8 || password.length() > 20) {
+            throw new BadRequestException("La contraseña debe tener entre 8 y 20 caracteres.");
+        }
+
+        // Al menos una mayúscula
+        if (!password.matches(".*[A-Z].*")) {
+            throw new BadRequestException("La contraseña debe contener al menos una letra mayúscula.");
+        }
+
+        // Al menos un número
+        if (!password.matches(".*[0-9].*")) {
+            throw new BadRequestException("La contraseña debe contener al menos un número.");
+        }
+
+        // Al menos un carácter especial
+        if (!password.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
+            throw new BadRequestException("La contraseña debe contener al menos un carácter especial.");
+        }
     }
 }

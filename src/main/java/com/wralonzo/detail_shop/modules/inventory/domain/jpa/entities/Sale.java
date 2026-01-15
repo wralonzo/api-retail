@@ -9,7 +9,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 
 import com.wralonzo.detail_shop.modules.customers.domain.jpa.entities.Client;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -43,9 +42,8 @@ public class Sale {
     @JoinColumn(name = "id_client")
     private Client client;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_warehouse", nullable = false)
-    private Warehouse warehouse;
+    @Column(name = "warehouse_id")
+    private Long warehouseId;
 
     @Column(name = "sale_date", nullable = false)
     @Builder.Default

@@ -1,22 +1,17 @@
 package com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
-
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "inventories",
-        uniqueConstraints = @UniqueConstraint(name = "unique_product_warehouse",
-                columnNames = {"id_product", "id_warehouse"}),
-        indexes = @Index(name = "idx_inventory_warehouse", columnList = "id_warehouse")
-)
+@Table(name = "inventories", uniqueConstraints = @UniqueConstraint(name = "unique_product_warehouse", columnNames = {
+        "id_product",
+        "warehouse_id" }), indexes = @Index(name = "idx_inventory_warehouse", columnList = "warehouse_id"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,19 +29,21 @@ public class Inventory {
     @JoinColumn(name = "id_product", nullable = false)
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_warehouse", nullable = false)
-    private Warehouse warehouse;
+    @Column(name = "warehouse_id")
+    private long warehouseId;
 
+    @Builder.Default
     @Column(nullable = false)
     private Integer quantity = 0;
 
+    @Builder.Default
     @Column(name = "alert_quantity")
     private Integer alertQuantity = 0;
 
     @Column(name = "expiration_date")
     private LocalDateTime expirationData;
 
+    @Builder.Default
     @Column(name = "quantity_reserved")
     private Integer quantityReserved = 0;
 

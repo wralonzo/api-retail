@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import org.apache.coyote.BadRequestException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +23,20 @@ import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.UserCreateRequest;
 public class ProfileService {
   private final ProfileRepository profileRepository;
 
+  @Transactional
   public Profile save(UserCreateRequest request) {
     Profile profile = Profile.builder()
         .fullName(request.getFullName())
         .phone(request.getPhone())
         .address(request.getAddress())
         .avatar(request.getAvatar())
+        .email((request.getEmail()))
         .build();
-    Profile profilenew = profileRepository.save(profile);
-    return profilenew;
+    return profileRepository.save(profile);
+  }
+
+  public Profile saveUser(Profile profile) {
+    return profileRepository.save(profile);
   }
 
   public Profile update(Long id, UserCreateRequest request) {
@@ -37,10 +44,7 @@ public class ProfileService {
         .orElseThrow(() -> new ResourceConflictException("Recurso no encontrado"));
     if (request.getEmail() != null
         && !request.getEmail().equalsIgnoreCase(profile.getEmail())) {
-      if (existsByEmail(request.getEmail())) {
-        throw new ResourceConflictException(
-            "El email " + request.getEmail() + " ya está en uso por otro cliente.");
-      }
+      this.emailExist(request.getEmail());
     }
 
     if (request.getFullName() != null) {
@@ -99,7 +103,19 @@ public class ProfileService {
     return this.profileRepository.findById(id).orElse(null);
   }
 
-  public boolean existsByEmail(String email) {
-    return this.profileRepository.existsByEmail(email);
+  public void emailExist(String email) {
+    // Asumiendo que tienes este método en profileService o profileRepository
+    if (this.profileRepository.existsByEmail(email)) {
+      throw new ResourceConflictException("El correo " + email + " ya está registrado.");
+    }
+  }
+
+  public void validateEmailForUpdate(Long currentUserId, String newEmail) {
+    profileRepository.findByEmail(newEmail)
+        .ifPresent(existingProfile -> {
+          new BadRequestException(
+              "El correo electrónico " + newEmail + " ya está registrado por otro usuario.");
+
+        });
   }
 }

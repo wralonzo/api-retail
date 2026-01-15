@@ -4,7 +4,6 @@ import com.wralonzo.detail_shop.configuration.exception.ResourceConflictExceptio
 import com.wralonzo.detail_shop.modules.auth.application.AuthService;
 import com.wralonzo.detail_shop.modules.auth.application.ProfileService;
 import com.wralonzo.detail_shop.modules.auth.application.UserClientService;
-import com.wralonzo.detail_shop.modules.auth.application.UserCreationService;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.UserAuthDto;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Profile;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
@@ -33,14 +32,13 @@ import com.wralonzo.detail_shop.modules.organization.application.CompanyService;
 @Builder
 public class ClientService {
     private final ClientRepository clientRepository;
-    private final UserCreationService userCreationService;
     private final AuthService authService;
     private final UserClientService userClientService;
     private final ClientMapper clientMapper;
     private final ProfileService profileService;
     private final CompanyService companyService;
 
-    @Transactional // Importante: si falla la creación del cliente, debe revertirse el usuario
+    @Transactional
     public ClientResponse createFullClient(FullClientCreateRequest request) {
         if (request.getClient().getCompanyId() != null) {
             companyService.getById(request.getClient().getCompanyId());

@@ -9,14 +9,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-    name = "employee",
-    schema = "auth",
-    indexes = {
+@Table(name = "employee", schema = "auth", indexes = {
         @Index(name = "idx_employee_warehouse", columnList = "id_warehouse"),
-        @Index(name = "idx_employee_user", columnList = "user_id")
-    }
-)
+})
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -47,7 +42,6 @@ public class Employee {
     @JoinColumn(name = "id_position_type")
     private PositionType positionType;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true)
+    @OneToOne(mappedBy = "employee") // Indica que User es el dueño
     private User user;
 }

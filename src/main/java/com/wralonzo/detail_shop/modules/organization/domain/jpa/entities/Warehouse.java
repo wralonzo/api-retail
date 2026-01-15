@@ -8,7 +8,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(
     name = "warehouses",
     schema = "organization")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

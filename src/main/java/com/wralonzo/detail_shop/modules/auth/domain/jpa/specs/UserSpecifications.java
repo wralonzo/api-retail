@@ -21,9 +21,6 @@ public class UserSpecifications {
 
       List<Predicate> predicates = new ArrayList<>();
 
-      // 2. Filtro: u.client IS NULL
-      predicates.add(cb.isNull(root.get("client")));
-
       // 3. Filtro: roleName (Join con roles)
       if (roleName != null && !roleName.isEmpty()) {
         // Especificamos que se una a nuestra entidad Role

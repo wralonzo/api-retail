@@ -47,6 +47,7 @@ public class SecurityConfig {
                             return !"TopFashion-Angular-App".equals(request.getHeader("x-app-origin"));
                         }).denyAll()
                         .requestMatchers("api/auth/google").permitAll()
+                        .requestMatchers("/api/user").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/config/google-client-id").permitAll()
                         // .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN", "SELLER")

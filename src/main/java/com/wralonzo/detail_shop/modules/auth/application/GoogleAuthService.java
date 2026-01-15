@@ -19,13 +19,12 @@ import org.springframework.beans.factory.annotation.Value;
 import com.wralonzo.detail_shop.configuration.exception.ResourceUnauthorizedException;
 import com.wralonzo.detail_shop.infrastructure.utils.PasswordUtils;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.GoogleRequest;
-import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.LoginResponse;
+import com.wralonzo.detail_shop.modules.auth.domain.mapper.records.LoginResponse;
 import com.wralonzo.detail_shop.modules.auth.domain.enums.ProviderRegister;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 import com.wralonzo.detail_shop.modules.customers.domain.enums.ClientType;
 import com.wralonzo.detail_shop.modules.customers.domain.jpa.entities.Client;
-import com.wralonzo.detail_shop.security.jwt.JwtUtil;
 import com.wralonzo.detail_shop.modules.auth.domain.mapper.user.UserMapper;
 import lombok.RequiredArgsConstructor;
 
@@ -34,7 +33,6 @@ import lombok.RequiredArgsConstructor;
 public class GoogleAuthService {
 
   private final UserRepository userRepository;
-  private final JwtUtil jwtUtil;
   private final UserCreationService userCreationService;
   private final PasswordEncoder passwordEncoder;
   private final RoleService roleService;
@@ -66,13 +64,7 @@ public class GoogleAuthService {
         .orElseGet(() -> userRepository.findByUsername(email)
             .map(manualUser -> linkGoogleToExistingUser(manualUser, googleId, name, avatarUrl))
             .orElseGet(() -> createNewUserAndClient(email, name, googleId, avatarUrl)));
-    return LoginResponse.builder()
-                .id(user.getId())
-                .token("")
-                .user(userMapper.toShortResponse(user)) // Mapper que ya configuramos
-                .employee(null)
-                .warehouse(null)
-                .build();
+    return userMapper.toLoginResponse(user, "");
   }
 
   // --- MÉTODOS DE APOYO PARA LIMPIEZA DE CÓDIGO ---
@@ -93,6 +85,7 @@ public class GoogleAuthService {
     user.setProviderId(googleId);
     user.getProfile().setAvatar(avatarUrl);
     user.setLastLoginAt(LocalDateTime.now());
+    user.setUsername(user.getUsername());
 
     if (user.getProfile() != null) {
       user.getProfile().setFullName(name);

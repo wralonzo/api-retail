@@ -9,15 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, Long>, JpaSpecificationExecutor<Client> {
-  boolean existsByEmail(String email);
-
-
 
   Optional<Client> findFirstByOrderByCodeDesc();
 
-  @Query("SELECT c FROM Client c " +
-      "LEFT JOIN FETCH c.warehouse " +
-      "LEFT JOIN FETCH c.user " +
-      "WHERE c.id = :id AND c.deletedAt IS NULL")
-  Optional<Client> findByIdWithDetails(@Param("id") Long id);
 }

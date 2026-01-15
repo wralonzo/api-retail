@@ -6,7 +6,7 @@ import com.wralonzo.detail_shop.modules.auth.application.UserCreationService;
 import com.wralonzo.detail_shop.modules.auth.application.UserService;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.GoogleRequest;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.LoginRequest;
-import com.wralonzo.detail_shop.modules.auth.domain.dtos.auth.LoginResponse;
+import com.wralonzo.detail_shop.modules.auth.domain.mapper.records.LoginResponse;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.ChangePasswordRequest;
 import com.wralonzo.detail_shop.modules.customers.application.ClientService;
 import com.wralonzo.detail_shop.modules.customers.domain.dto.client.ClientResponse;
@@ -15,17 +15,20 @@ import com.wralonzo.detail_shop.modules.customers.domain.dto.client.FullClientCr
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.apache.coyote.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Map;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.UserStaffCreateRequest;
+import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
 
 @RestController
 @RequestMapping("")
@@ -55,21 +58,21 @@ public class UserController {
     }
 
     @PatchMapping("/user/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ADMIN')") // Solo un admin debería poder desactivar usuarios
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Solo un admin debería poder desactivar usuarios
     public ResponseEntity<?> deactivate(@PathVariable Long id) {
         userService.deactivateUser(id);
         return ResponseEntity.ok(Map.of("message", "Usuario desactivado exitosamente"));
     }
 
     @PatchMapping("/user/{id}/activate")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<?> activate(@PathVariable Long id) {
         userService.activateUser(id);
         return ResponseEntity.ok(Map.of("message", "Usuario activado exitosamente"));
     }
 
     @PatchMapping("/user/{id}")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<LoginResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserStaffCreateRequest request) {
@@ -94,11 +97,10 @@ public class UserController {
     }
 
     @PatchMapping("/user/{id}/password")
-    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<?> changePassword(
             @PathVariable Long id,
-            @Valid @RequestBody ChangePasswordRequest request) {
-        userService.updatePassword(id, request.getNewPassword(), request.getMotive());
+            @Valid @RequestBody ChangePasswordRequest request) throws BadRequestException {
+        userService.updatePassword(id, request);
         return ResponseUtil.ok(Map.of("message", "Contraseña actualizada exitosamente"));
     }
 

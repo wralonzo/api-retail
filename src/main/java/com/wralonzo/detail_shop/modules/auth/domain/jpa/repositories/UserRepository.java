@@ -21,32 +21,19 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
         // Aquí puedes usar @EntityGraph para cargar las relaciones de forma eficiente
         // sin causar el error de paginación en memoria de Hibernate.
         @Override
-        @EntityGraph(attributePaths = { "roles", "employee.warehouse", "employee.positionType" })
+        @EntityGraph(attributePaths = { "roles", "employee.positionType" })
         Page<User> findAll(Specification<User> spec, Pageable pageable);
 
         Optional<User> findByUsername(String username);
 
-        @Query("SELECT DISTINCT u FROM User u " +
-                        "LEFT JOIN FETCH u.roles r " +
-                        "LEFT JOIN FETCH u.employee e " +
-                        "LEFT JOIN FETCH e.warehouse " +
-                        "LEFT JOIN FETCH e.positionType " +
-                        "WHERE u.client IS NULL " +
-                        "AND (:roleName IS NULL OR r.name = :roleName) " +
-                        "AND (:term IS NULL OR :term = '' " +
-                        "     OR LOWER(u.username) LIKE LOWER(CONCAT('%', CAST(:term AS string), '%')) " +
-                        "     OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', CAST(:term AS string), '%')))")
-        Page<User> findAllWithFilters(@Param("term") String term,
-                        @Param("roleName") String roleName,
-                        Pageable pageable);
-
         @Query("SELECT u FROM User u " +
                         "LEFT JOIN FETCH u.employee e " +
-                        "LEFT JOIN FETCH e.warehouse " +
                         "LEFT JOIN FETCH e.positionType " +
                         "LEFT JOIN FETCH u.roles " +
                         "WHERE u.id = :id")
         Optional<User> findByIdWithDetails(@Param("id") Long id);
 
         Optional<User> findByProviderAndProviderId(ProviderRegister provider, String providerId);
+
+        boolean existsByUsername(String username);
 }

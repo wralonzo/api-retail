@@ -113,7 +113,6 @@ public class InventoryService {
         return StockResponse.builder()
                 .productName(product.getName())
                 .sku(product.getSku())
-                .warehouseName(inv.getWarehouse().getName())
                 .currentStock(inv.getQuantity())
                 .stockMinim(product.getStockMinim())
                 .quantityReserved(inv.getQuantityReserved())
@@ -126,7 +125,7 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public List<StockResponse> getLowStockAlerts(Long warehouseId) {
         // Este query lo definiremos en el repositorio
-        return inventoryRepository.findLowStockByWarehouse(warehouseId).stream()
+        return inventoryRepository.findByWarehouseId(warehouseId).stream()
                 .map(inv -> getCurrentStock(inv.getProduct().getId(), warehouseId))
                 .toList();
     }
@@ -135,7 +134,6 @@ public class InventoryService {
     private Inventory createInitialInventory(Long productId, Long warehouseId) {
         return Inventory.builder()
                 .product(productRepository.getReferenceById(productId))
-                .warehouse(warehouseRepository.getById(warehouseId))
                 .quantity(0)
                 .quantityReserved(0)
                 .build();
@@ -180,7 +178,6 @@ public class InventoryService {
             if (!exists) {
                 Inventory newInventory = Inventory.builder()
                         .product(product)
-                        .warehouse(warehouse)
                         .quantity(0)
                         .quantityReserved(0)
                         .build();

@@ -41,8 +41,9 @@ public class User implements UserDetails {
     @Column(name = "init_password")
     private String passwordInit;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
-    private ProviderRegister provider;
+    private ProviderRegister provider = ProviderRegister.LOCAL;
 
     private String providerId;
 
@@ -50,8 +51,12 @@ public class User implements UserDetails {
     private boolean enabled = true;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id", referencedColumnName = "id")
+    @JoinColumn(name = "profile_id", referencedColumnName = "id_profile", unique = true)
     private Profile profile;
+
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", referencedColumnName = "id_employee", unique = true)
+    public Employee employee;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
@@ -61,6 +66,9 @@ public class User implements UserDetails {
     @Column(name = "last_login_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "password_last_changed_at")
+    private LocalDateTime passwordLastChangedAt;
+
     @UpdateTimestamp
     @LastModifiedDate
     @Column(name = "update_at")
@@ -68,10 +76,6 @@ public class User implements UserDetails {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "employee_id")
-    public Employee employee;
 
     @ManyToMany(fetch = FetchType.EAGER) // EAGER para cargar roles al autenticar
     @JoinTable(name = "users_roles", schema = "auth", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
@@ -86,17 +90,19 @@ public class User implements UserDetails {
     }
 
     @Override
+    public boolean isCredentialsNonExpired() {
+        if (passwordLastChangedAt == null)
+            return true;
+        return passwordLastChangedAt.plusDays(90).isAfter(LocalDateTime.now());
+    }
+
+    @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
         return true;
     }
 

@@ -11,7 +11,7 @@ import com.wralonzo.detail_shop.modules.customers.domain.enums.ClientType;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "clients", schema = "customers", indexes = {
+@Table(name = "clients", schema = "customer", indexes = {
         // Índice crucial para buscar el perfil de cliente cuando el usuario hace login
         @Index(name = "idx_client_user_id", columnList = "user_id")
 })
@@ -44,9 +44,10 @@ public class Client {
     @Column(name = "tax_id", length = 20) // NIT / RUT / RFC para facturación
     private String taxId;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "client_type", nullable = true)
-    private ClientType clientType;
+    private ClientType clientType = ClientType.REGULAR;
 
     @Column(unique = true, nullable = false, length = 50)
     private String code;

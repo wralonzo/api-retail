@@ -4,8 +4,8 @@ import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDate;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.user.UserShortResponse;
+import com.wralonzo.detail_shop.modules.customers.domain.enums.ClientType;
 import com.wralonzo.detail_shop.modules.auth.domain.dtos.profile.ProfileResponse;
-
 
 @Data
 @Builder
@@ -15,7 +15,7 @@ public class ClientResponse {
 
     // --- Datos de Negocio (Módulo Customers) ---
     private String code;
-    private String clientType;
+    private ClientType clientType;
     private Long companyId;
     private String taxId;
     private String notes;

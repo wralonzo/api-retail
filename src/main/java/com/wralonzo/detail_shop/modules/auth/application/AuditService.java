@@ -16,10 +16,12 @@ public class AuditService {
   private final AuditLogRepository auditLogRepository;
 
   @Async // Para que no bloquee la ejecución principal
-  public void logAction(String username, String action, String description) {
+  public void logAction(String username, String action, String description, String channel, String ipAddress) {
     AuditLog log = AuditLog.builder()
         .username(username)
         .action(action)
+        .channel(channel)
+        .ipAddress(channel)
         .description(description)
         .timestamp(LocalDateTime.now())
         .build();

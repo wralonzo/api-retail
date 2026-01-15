@@ -10,7 +10,6 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 
 @Data
 @Builder
@@ -29,6 +28,7 @@ public class UserStaffCreateRequest {
   private String fullName;
 
   @Email(message = "El correo no es válido")
+  @Size(min = 0, max = 100)
   private String email;
 
   @Past(message = "La fecha de nacimiento debe ser una fecha pasada")
@@ -38,8 +38,8 @@ public class UserStaffCreateRequest {
   private String address;
   private String avatar;
 
-  private long positionTypeId;
-  private long warehouseId;
+  private Long positionTypeId;
+  private Long warehouseId;
 
   @NotEmpty(message = "El usuario debe tener al menos un rol asignado")
   private List<String> roles;

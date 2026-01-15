@@ -1,6 +1,8 @@
 package com.wralonzo.detail_shop.configuration.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+
+import org.apache.coyote.BadRequestException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +13,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.client.HttpClientErrorException.BadRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -110,6 +111,28 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(), // Aquí vendrá "La contraseña debe contener al menos una letra mayúscula"
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    // También es recomendable agregar ResourceUnauthorizedException si la estás
+    // usando
+    @ExceptionHandler(ResourceUnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleResourceUnauthorizedException(ResourceUnauthorizedException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                ex.getMessage(),
+                LocalDateTime.now(),
+                ex.getClass().getSimpleName());
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
     /**
      * ✅ NUEVO: Maneja el error 401 No Autorizado cuando las credenciales
      * (usuario/contraseña) son incorrectas.
@@ -200,5 +223,55 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 ex.getClass().getSimpleName());
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Captura errores de integridad (Duplicate Key, Foreign Key violation, etc.)
+     * Evita mostrar el log técnico y devuelve mensajes limpios.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        String rootMsg = ex.getMostSpecificCause().getMessage();
+        String friendlyMessage = "No se pudo completar la acción porque los datos no cumplen con las reglas de integridad.";
+
+        // Lógica dinámica para identificar el tipo de error sin try-catch en el service
+        if (rootMsg.contains("duplicate key")) {
+            friendlyMessage = "Operación fallida: Ya existe un registro con estos datos únicos.";
+            if (rootMsg.contains("username"))
+                friendlyMessage = "El nombre de usuario ya está en uso.";
+            if (rootMsg.contains("email"))
+                friendlyMessage = "El correo electrónico ya está registrado.";
+        } else if (rootMsg.contains("violates foreign key constraint")) {
+            friendlyMessage = "No se puede realizar la operación. El registro está relacionado con otra información (Llave foránea).";
+        } else if (rootMsg.contains("violates not-null constraint")) {
+            friendlyMessage = "Faltan campos obligatorios para completar la operación.";
+        }
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                friendlyMessage,
+                LocalDateTime.now(),
+                "DatabaseIntegrityError");
+
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Captura errores generales de acceso a datos (Conexión perdida, Timeout, Error
+     * de sintaxis SQL)
+     */
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<ErrorResponse> handleGeneralDataError(org.springframework.dao.DataAccessException ex) {
+        // Log para el desarrollador (Docker/Consola)
+        System.err.println("Database Error: " + ex.getMostSpecificCause().getMessage());
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "El servicio de base de datos no está disponible temporalmente. Por favor, intente más tarde.",
+                LocalDateTime.now(),
+                "PersistenceException");
+
+        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
     }
 }

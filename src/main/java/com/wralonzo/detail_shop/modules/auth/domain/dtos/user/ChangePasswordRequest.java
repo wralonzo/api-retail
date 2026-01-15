@@ -12,4 +12,7 @@ public class ChangePasswordRequest {
 
   private String motive;
 
+  @Size(max = 60, message = "El canal no debe estar vacío")
+  private String channel;
+
 }

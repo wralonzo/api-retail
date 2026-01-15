@@ -10,6 +10,7 @@ import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehou
 import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationRequest;
 import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationResponse;
 import com.wralonzo.detail_shop.modules.reservations.domain.jpa.entities.Reservation;
+import com.wralonzo.detail_shop.modules.reservations.domain.jpa.entities.Reservation.Estado;
 import com.wralonzo.detail_shop.modules.reservations.domain.jpa.repositories.ReservationRepository;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +50,8 @@ public class ReservationService {
                 payload.getEmployee(),
                 payload.getReservationDate(),
                 payload.getStartTime(),
-                payload.getFinishDate());
+                payload.getFinishDate(),
+                Estado.CANCELADA);
 
         if (isOccupied) {
             throw new ResourceConflictException(
@@ -65,14 +67,12 @@ public class ReservationService {
                 .orElseThrow(() -> new ResourceConflictException("Empleado no encontrada"));
 
         Reservation reservation = Reservation.builder()
-                .client(client)
-                .warehouse(warehouse)
+
                 .reservationDate(payload.getReservationDate())
                 .startTime(payload.getStartTime())
                 .finishDate(payload.getFinishDate())
                 .type(payload.getType())
                 .notes(payload.getNotes())
-                .employee(employee)
                 .state(Reservation.Estado.PROGRAMADA)
                 .build();
         reservationRepository.save(reservation);
@@ -92,9 +92,9 @@ public class ReservationService {
 
         // Si cambia el horario o el empleado, validamos solapamiento de nuevo
         boolean needsOverlapCheck = false;
-        if (payload.getEmployee() != null && !payload.getEmployee().equals(res.getEmployee().getId())) {
+        if (payload.getEmployee() != null && !payload.getEmployee().equals(res.getEmployeeId())) {
             Employee newEmployee = employeeRepository.findById(payload.getEmployee()).orElseThrow();
-            res.setEmployee(newEmployee);
+            res.setEmployeeId(newEmployee.getId());
             needsOverlapCheck = true;
         }
 
@@ -112,7 +112,7 @@ public class ReservationService {
         }
 
         if (needsOverlapCheck) {
-            validateOverlap(res.getEmployee().getId(), res.getReservationDate(), res.getStartTime(),
+            validateOverlap(res.getEmployeeId(), res.getReservationDate(), res.getStartTime(),
                     res.getFinishDate(), res.getId());
         }
 
@@ -138,7 +138,8 @@ public class ReservationService {
     private void validateOverlap(Long empId, LocalDate date, LocalTime start, LocalTime end, Long currentId) {
         // Nota: Aquí podrías necesitar un query que ignore el ID actual de la cita para
         // permitir editar sin chocar con sigo misma
-        boolean occupied = reservationRepository.existsOverlappingUpdate(empId, date, start, end, currentId);
+        boolean occupied = reservationRepository.existsOverlappingUpdate(empId, date, start, end, currentId,
+                Reservation.Estado.PROGRAMADA);
         if (occupied)
             throw new ResourceConflictException("El nuevo horario choca con otra cita existente.");
     }
@@ -146,9 +147,6 @@ public class ReservationService {
     private ReservationResponse mapToResponse(Reservation res) {
         return ReservationResponse.builder()
                 .id(res.getId())
-                .clientName(res.getClient().getTaxId())
-                .employeeName(res.getEmployee() != null ? res.getEmployee().getUser().getPassword() : "Sin asignar")
-                .warehouseName(res.getWarehouse().getName())
                 .reservationDate(res.getReservationDate())
                 .startTime(res.getStartTime())
                 .finishDate(res.getFinishDate())
