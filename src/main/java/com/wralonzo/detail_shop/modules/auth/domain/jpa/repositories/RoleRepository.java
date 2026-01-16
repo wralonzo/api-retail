@@ -14,7 +14,10 @@ import java.util.Set;
 
 public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Set<Role>> findAllByNameIn(Collection<String> names);
+
     List<Role> findByNameIn(Collection<String> names);
+
+    Optional<Role> findByName(String name);
 
     Page<RoleProjection> findAllProjectedBy(Pageable pagable);
 }

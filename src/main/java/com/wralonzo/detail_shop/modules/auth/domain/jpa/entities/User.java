@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "user", schema = "auth", uniqueConstraints = {
@@ -84,9 +83,21 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .collect(Collectors.toList());
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        for (Role role : roles) {
+            // Añadir el nombre del Rol
+            authorities.add(new SimpleGrantedAuthority(role.getName()));
+
+            // Añadir los nombres de los Permisos asociados al Rol
+            if (role.getPermissions() != null) {
+                role.getPermissions().stream()
+                        .map(p -> new SimpleGrantedAuthority(p.getName()))
+                        .forEach(authorities::add);
+            }
+        }
+
+        return authorities;
     }
 
     @Override

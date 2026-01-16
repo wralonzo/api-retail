@@ -1,5 +1,7 @@
 package com.wralonzo.detail_shop.modules.auth.domain.jpa.entities;
 
+import java.util.Set;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,4 +23,9 @@ public class Role {
 
     @Column()
     private String note;
+
+    // En tu clase Role.java
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "roles_permissions", schema = "auth", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
+    private Set<Permission> permissions;
 }

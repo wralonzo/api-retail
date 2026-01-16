@@ -46,7 +46,8 @@ public class UserController {
     }
 
     @PostMapping("/user")
-    public ResponseEntity<LoginResponse> createUser(@Valid @RequestBody UserStaffCreateRequest request) {
+    public ResponseEntity<LoginResponse> createUser(@Valid @RequestBody UserStaffCreateRequest request,
+            @AuthenticationPrincipal User adminPrincipal) {
         LoginResponse saveUser = this.userCreationService.SaveUser(request);
         return ResponseEntity.ok(saveUser);
     }
@@ -58,21 +59,21 @@ public class UserController {
     }
 
     @PatchMapping("/user/{id}/deactivate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')") // Solo un admin debería poder desactivar usuarios
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> deactivate(@PathVariable Long id) {
         userService.deactivateUser(id);
         return ResponseEntity.ok(Map.of("message", "Usuario desactivado exitosamente"));
     }
 
     @PatchMapping("/user/{id}/activate")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<?> activate(@PathVariable Long id) {
         userService.activateUser(id);
         return ResponseEntity.ok(Map.of("message", "Usuario activado exitosamente"));
     }
 
     @PatchMapping("/user/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<LoginResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserStaffCreateRequest request) {
@@ -82,20 +83,23 @@ public class UserController {
     }
 
     @GetMapping("/user")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
     public ResponseEntity<Page<LoginResponse>> getAll(
             @RequestParam(required = false) String term,
             @RequestParam(required = false) String roleName,
+            @RequestParam(required = false) String userType,
             @PageableDefault(size = 10, sort = "name") Pageable pageable) {
-        Page<LoginResponse> users = this.userService.getAll(term, roleName, pageable);
+        Page<LoginResponse> users = this.userService.getAll(term, roleName, userType, pageable);
         return ResponseUtil.ok(users);
     }
 
-    @GetMapping("/user/{id}/profile")
+    @PreAuthorize("hasAuthority('USER_PROFILE')")
     public ResponseEntity<LoginResponse> profile(@PathVariable Long id) {
         LoginResponse users = this.userService.getById(id);
         return ResponseUtil.ok(users);
     }
 
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
     @PatchMapping("/user/{id}/password")
     public ResponseEntity<?> changePassword(
             @PathVariable Long id,

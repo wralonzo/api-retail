@@ -15,4 +15,6 @@ public class ClientRequest {
     private Boolean flagUser;
 
     private String preferredDeliveryAddress;
+
+    private Long companyId;
 }

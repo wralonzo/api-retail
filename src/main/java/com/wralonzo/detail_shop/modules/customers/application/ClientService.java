@@ -26,6 +26,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 import com.wralonzo.detail_shop.modules.organization.application.CompanyService;
 
 @Service
@@ -41,10 +43,11 @@ public class ClientService {
 
     @Transactional // Importante: si falla la creación del cliente, debe revertirse el usuario
     public ClientResponse createFullClient(FullClientCreateRequest request) {
-        Long userCompanyId = companyService.getCurrentUserCompanyId();
+        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
 
-        if (userCompanyId != null) {
-            companyService.getById(userCompanyId);
+        Long companyId = request.getClient().getCompanyId();
+        if (companyIdOpt.isPresent()) {
+            companyId = companyIdOpt.get();
         }
 
         User userNew = null;
@@ -65,7 +68,7 @@ public class ClientService {
                 .profileId(profile.getId())
                 .code(clientCode) // Solo una vez
                 .clientType(request.getClient().getClientType())
-                .companyId(userCompanyId)
+                .companyId(companyId)
                 .preferredDeliveryAddress(request.getClient().getPreferredDeliveryAddress())
                 .taxId(request.getClient().getTaxId())
                 .active(true)
@@ -79,18 +82,24 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponse> searchFullClients(String term, ClientType type, Pageable pageable) {
-        Long userCompanyId = companyService.getCurrentUserCompanyId();
+        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
 
         List<Long> profileIdsFromAuth = (term != null && !term.isBlank())
                 ? profileService.findIdsByTerm(term)
                 : Collections.emptyList();
 
-        /// 2. Combinar especificaciones
         Specification<Client> spec = Specification
                 .where(ClientSpecifications.isNotDeleted())
                 .and(ClientSpecifications.hasClientType(type))
-                .and(ClientSpecifications.hasCompanyId(userCompanyId))
                 .and(ClientSpecifications.containsTerm(term, profileIdsFromAuth));
+        if (companyIdOpt.isPresent()) {
+            /// 2. Combinar especificaciones
+            spec = Specification
+                    .where(ClientSpecifications.isNotDeleted())
+                    .and(ClientSpecifications.hasClientType(type))
+                    .and(ClientSpecifications.hasCompanyId(companyIdOpt.get()))
+                    .and(ClientSpecifications.containsTerm(term, profileIdsFromAuth));
+        }
 
         Page<Client> clientsPage = clientRepository.findAll(spec, pageable);
 
@@ -182,11 +191,18 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     private Client findOneById(Long id) {
-        Long userCompanyId = companyService.getCurrentUserCompanyId();
+        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
+
         Specification<Client> spec = Specification
                 .where(ClientSpecifications.isNotDeleted())
-                .and(ClientSpecifications.hasCompanyId(userCompanyId))
                 .and((root, query, cb) -> cb.equal(root.get("id"), id));
+
+        if (companyIdOpt.isPresent()) {
+            spec = Specification
+                    .where(ClientSpecifications.isNotDeleted())
+                    .and(ClientSpecifications.hasCompanyId(companyIdOpt.get()))
+                    .and((root, query, cb) -> cb.equal(root.get("id"), id));
+        }
 
         return clientRepository.findOne(spec)
                 .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado"));

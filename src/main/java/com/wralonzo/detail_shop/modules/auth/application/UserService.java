@@ -29,6 +29,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import com.wralonzo.detail_shop.modules.auth.domain.mapper.user.UserMapper;
+import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
 
 @Service
 @AllArgsConstructor
@@ -43,6 +45,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final PasswordHistoryService passwordHistoryService;
     private final PasswordEncoder passwordEncoder;
+    private final WarehouseService warehouseService;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
@@ -81,12 +84,29 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LoginResponse> getAll(String term, String roleName, Pageable pageable) {
-        Specification<User> spec = UserSpecifications.filterUsers(term, roleName);
+    public Page<LoginResponse> getAll(String term, String roleName, String userType, Pageable pageable) {
+        // 1. Obtener contexto (contiene companyId, warehouseIds e isSuperAdmin)
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
+
+        // 2. Especificación base
+        Specification<User> spec = Specification
+                .where(UserSpecifications.isNotDeleted())
+                .and(UserSpecifications.filterUsers(term, roleName));
+
+        // 3. Filtro por tipo (Cliente vs Empleado)
+        if (userType != null && !userType.isBlank()) {
+            spec = spec.and(UserSpecifications.hasUserType(userType));
+        }
+
+        // 4. Aplicar restricción de Empresa/Almacenes si no es Super Admin
+        if (!context.isSuperAdmin()) {
+            spec = spec.and(UserSpecifications.filterByCompanyContext(
+                    context.companyId(),
+                    context.warehouseIds()));
+        }
+
         Page<User> users = userRepository.findAll(spec, pageable);
-        return users.map(user -> {
-            return userMapper.toLoginResponse(user, "");
-        });
+        return users.map(user -> userMapper.toLoginResponse(user, ""));
     }
 
     @Transactional(readOnly = true)
@@ -144,7 +164,6 @@ public class UserService {
                 changeRequest.getChannel(),
                 changeRequest.getIpLocal());
     }
-
 
     private void validatePasswordComplexity(String password) throws BadRequestException {
         // Mínimo 8 caracteres, máximo 20
