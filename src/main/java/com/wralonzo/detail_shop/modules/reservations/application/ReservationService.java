@@ -2,157 +2,246 @@ package com.wralonzo.detail_shop.modules.reservations.application;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
-import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Employee;
-import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.EmployeeRepository;
 import com.wralonzo.detail_shop.modules.customers.domain.jpa.entities.Client;
 import com.wralonzo.detail_shop.modules.customers.domain.jpa.repositories.ClientRepository;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
+import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryMovementService;
+import com.wralonzo.detail_shop.modules.inventory.application.sale.SaleService;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.sale.SaleDetailRequest;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.sale.SaleRequest;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.sale.SaleResponse;
+import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductBranchConfigRepository;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
+import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
+import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationDetailRequest;
+import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationDetailResponse;
 import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationRequest;
 import com.wralonzo.detail_shop.modules.reservations.domain.dtos.ReservationResponse;
 import com.wralonzo.detail_shop.modules.reservations.domain.jpa.entities.Reservation;
-import com.wralonzo.detail_shop.modules.reservations.domain.jpa.entities.Reservation.Estado;
+import com.wralonzo.detail_shop.modules.reservations.domain.jpa.entities.ReservationDetail;
+import com.wralonzo.detail_shop.modules.reservations.domain.jpa.repositories.ReservationDetailRepository;
 import com.wralonzo.detail_shop.modules.reservations.domain.jpa.repositories.ReservationRepository;
-
-import org.springframework.transaction.annotation.Transactional;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
-@Builder
+@RequiredArgsConstructor
 public class ReservationService {
-    private final ReservationRepository reservationRepository;
-    private final ClientRepository clientRepository;
-    private final WarehouseService warehouseService;
-    private final EmployeeRepository employeeRepository;
 
-    @Transactional(readOnly = true)
-    public Page<ReservationResponse> getAll(Pageable pageable) {
-        Page<Reservation> entitiesPage = reservationRepository.findAll(pageable);
-        entitiesPage.getContent();
-        return entitiesPage.map(this::mapToResponse);
+    private final ReservationRepository reservationRepository;
+    private final ReservationDetailRepository reservationDetailRepository;
+    private final ProductRepository productRepository;
+    private final ProductBranchConfigRepository branchConfigRepository;
+    private final ClientRepository clientRepository;
+    private final InventoryMovementService inventoryMovementService;
+    private final WarehouseService warehouseService;
+    private final SaleService saleService; // To convert to Sale
+
+    @Transactional
+    public ReservationResponse createReservation(ReservationRequest request) {
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
+
+        // 1. Validar Cliente
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente no encontrado"));
+
+        // TODO: Validar límite de crédito si aplica (Corporate Validation)
+        // if (client.getCreditLimit().compareTo(BigDecimal.ZERO) > 0) { ... }
+
+        // 2. Crear Cabecera
+        Reservation reservation = Reservation.builder()
+                .reservationDate(request.getReservationDate() != null ? request.getReservationDate() : LocalDate.now())
+                .startTime(LocalTime.now())
+                .finishDate(LocalTime.now().plusHours(1)) // Placeholder
+                .expirationDate(request.getExpirationDate() != null ? request.getExpirationDate().atStartOfDay()
+                        : LocalDate.now().plusDays(3).atStartOfDay())
+                .notes(request.getNotes())
+                .state(Reservation.Estado.PROGRAMADA)
+                .employeeId(context.user().getEmployee().getId())
+                .clientId(client.getId())
+                .warehouseId(request.getWarehouseId())
+                .total(BigDecimal.ZERO)
+                .build();
+
+        reservation = reservationRepository.save(reservation);
+
+        BigDecimal total = BigDecimal.ZERO;
+        List<ReservationDetailResponse> detailsResponse = new ArrayList<>();
+
+        // 3. Procesar Items y Reservar Stock
+        for (ReservationDetailRequest itemReq : request.getItems()) {
+            Product product = productRepository.findById(itemReq.getProductId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Producto ID " + itemReq.getProductId() + " no encontrado"));
+
+            ProductUnit unit = product.getUnits().stream()
+                    .filter(u -> u.getId().equals(itemReq.getUnitId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("Unidad inválida"));
+
+            // Buscar precio
+            ProductBranchConfig branchConfig = branchConfigRepository
+                    .findByProductIdAndBranchId(product.getId(), request.getWarehouseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Producto no habilitado en sucursal"));
+
+            BigDecimal unitPrice = branchConfig.getPrices().stream()
+                    .filter(p -> p.getUnit().getId().equals(unit.getId()))
+                    .findFirst()
+                    .map(ProductBranchPrice::getPrice)
+                    .orElseThrow(() -> new ResourceNotFoundException("Precio no configurado"));
+
+            ReservationDetail detail = ReservationDetail.builder()
+                    .reservation(reservation)
+                    .product(product)
+                    .unit(unit)
+                    .quantity(itemReq.getQuantity())
+                    .priceUnit(unitPrice)
+                    .build();
+            detail.calculateSubtotal();
+
+            reservationDetailRepository.save(detail);
+
+            total = total.add(detail.getSubtotal());
+            detailsResponse.add(ReservationDetailResponse.builder()
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .unitId(unit.getId())
+                    .unitName(unit.getUnitName())
+                    .quantity(detail.getQuantity())
+                    .priceUnit(detail.getPriceUnit())
+                    .subtotal(detail.getSubtotal())
+                    .build());
+
+            // 4. RESERVAR INVENTARIO
+            if (product.getType() == ProductType.BUNDLE) {
+                for (ProductBundle component : product.getBundleItems()) {
+                    int qtyToReserve = itemReq.getQuantity() * component.getQuantity();
+                    inventoryMovementService.reserveStock(component.getComponentProduct().getId(),
+                            request.getWarehouseId(), qtyToReserve);
+                }
+            } else {
+                int baseQty = unit.getConversionFactor().multiply(BigDecimal.valueOf(itemReq.getQuantity())).intValue();
+                inventoryMovementService.reserveStock(product.getId(), request.getWarehouseId(), baseQty);
+            }
+        }
+
+        reservation.setTotal(total);
+        reservationRepository.save(reservation);
+
+        return mapToResponse(reservation, detailsResponse);
     }
 
     @Transactional
-    public void create(ReservationRequest payload) {
-        if (payload.getFinishDate().isBefore(payload.getStartTime())) {
-            throw new ResourceConflictException("La hora de finalización no puede ser antes de la hora de inicio.");
-        }
-        // 2. Verificar disponibilidad (Solapamiento)
-        boolean isOccupied = reservationRepository.existsOverlapping(
-                payload.getEmployee(),
-                payload.getReservationDate(),
-                payload.getStartTime(),
-                payload.getFinishDate(),
-                Estado.CANCELADA);
+    public SaleResponse confirmReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservación no encontrada"));
 
-        if (isOccupied) {
-            throw new ResourceConflictException(
-                    "El empleado " + payload.getEmployee() + " ya tiene una cita programada en ese horario.");
+        if (reservation.getState() != Reservation.Estado.PROGRAMADA) {
+            throw new ResourceConflictException("La reservación no está en estado PROGRAMADA");
         }
 
-        Client client = clientRepository.findById(payload.getClientId())
-                .orElseThrow(() -> new ResourceConflictException("Cliente no encontrado"));
+        // 1. Convertir a Venta usando SaleService
+        List<SaleDetailRequest> saleItems = reservation.getDetails().stream().map(d -> SaleDetailRequest.builder()
+                .productId(d.getProduct().getId())
+                .unitId(d.getUnit().getId())
+                .quantity(d.getQuantity())
+                .build()).collect(Collectors.toList());
 
-        Warehouse warehouse = warehouseService.getById(payload.getWarehouseId());
-
-        Employee employee = employeeRepository.findById(payload.getEmployee())
-                .orElseThrow(() -> new ResourceConflictException("Empleado no encontrada"));
-
-        Reservation reservation = Reservation.builder()
-
-                .reservationDate(payload.getReservationDate())
-                .startTime(payload.getStartTime())
-                .finishDate(payload.getFinishDate())
-                .type(payload.getType())
-                .notes(payload.getNotes())
-                .state(Reservation.Estado.PROGRAMADA)
+        SaleRequest saleRequest = SaleRequest.builder()
+                .clientId(reservation.getClientId())
+                .warehouseId(reservation.getWarehouseId())
+                .type(Sale.TipoVenta.CONTADO)
+                .notes("Confirmación de Reserva #" + reservation.getId())
+                .items(saleItems)
                 .build();
+
+        // NOTA: SaleService actualmente descuenta stock "real".
+        // Como ya tenemos stock "reservado", necesitamos una lógica especial para
+        // "confirmar reserva"
+        // en lugar de usar SaleService.createSale directamente que intentaría descontar
+        // stock disponible (que ya bajó al reservar?).
+        // ESPERA: reserveStock SOLO aumenta reservedQuantity. quantityFree = quantity -
+        // reservedQuantity.
+        // SaleService valida contra quantityFree?
+        // -> inventoryMovementService.processSalesMovement chequea "before < quantity".
+        // Before es inv.getQuantity().
+        // El stock físico NO se ha movido, solo el reservado.
+        // PERO SaleService llama a processSalesMovement que hace: if (before <
+        // quantity).
+        // Si reservé 5 (qty=10, reserved=5, free=5), saleService checkea 10. OK.
+        // PERO SaleService resta 5. Queda (qty=5, reserved=5).
+        // Deberíamos liberar la reserva TAMBIÉN.
+
+        // SOLUCIÓN: Liberar reserva antes de llamar a createSale?
+        // Si libero reserva, alguien más podría ganarlo en ms? (Poco probable en
+        // transacción).
+
+        // Paso 1: Liberar Reserva (internamente)
+        releaseInventoryForReservation(reservation);
+
+        // Paso 2: Crear Venta (Descuenta stock real)
+        SaleResponse saleResponse = saleService.createSale(saleRequest);
+
+        // Paso 3: Actualizar Estado Reserva
+        reservation.setState(Reservation.Estado.CONFIRMADA); // O COMPLETADA
+        reservationRepository.save(reservation);
+
+        return saleResponse;
+    }
+
+    @Transactional
+    public void cancelReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservación no encontrada"));
+
+        if (reservation.getState() != Reservation.Estado.PROGRAMADA) {
+            throw new ResourceConflictException("Solo se pueden cancelar reservaciones programadas");
+        }
+
+        releaseInventoryForReservation(reservation);
+
+        reservation.setState(Reservation.Estado.CANCELADA);
         reservationRepository.save(reservation);
     }
 
-    public ReservationResponse getById(Long id) {
-        Reservation res = reservationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservación no encontrada"));
-        return mapToResponse(res);
+    private void releaseInventoryForReservation(Reservation reservation) {
+        for (ReservationDetail detail : reservation.getDetails()) {
+            Product product = detail.getProduct();
+            if (product.getType() == ProductType.BUNDLE) {
+                for (ProductBundle component : product.getBundleItems()) {
+                    int qtyToRelease = detail.getQuantity() * component.getQuantity();
+                    inventoryMovementService.releaseReservedStock(component.getComponentProduct().getId(),
+                            reservation.getWarehouseId(), qtyToRelease);
+                }
+            } else {
+                int baseQty = detail.getUnit().getConversionFactor().multiply(BigDecimal.valueOf(detail.getQuantity()))
+                        .intValue();
+                inventoryMovementService.releaseReservedStock(product.getId(), reservation.getWarehouseId(), baseQty);
+            }
+        }
     }
 
-    // --- ACTUALIZAR (PATCH)
-    @Transactional
-    public ReservationResponse update(Long id, ReservationRequest payload) {
-        Reservation res = reservationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservación no encontrada"));
-
-        // Si cambia el horario o el empleado, validamos solapamiento de nuevo
-        boolean needsOverlapCheck = false;
-        if (payload.getEmployee() != null && !payload.getEmployee().equals(res.getEmployeeId())) {
-            Employee newEmployee = employeeRepository.findById(payload.getEmployee()).orElseThrow();
-            res.setEmployeeId(newEmployee.getId());
-            needsOverlapCheck = true;
-        }
-
-        if (payload.getReservationDate() != null) {
-            res.setReservationDate(payload.getReservationDate());
-            needsOverlapCheck = true;
-        }
-        if (payload.getStartTime() != null) {
-            res.setStartTime(payload.getStartTime());
-            needsOverlapCheck = true;
-        }
-        if (payload.getFinishDate() != null) {
-            res.setFinishDate(payload.getFinishDate());
-            needsOverlapCheck = true;
-        }
-
-        if (needsOverlapCheck) {
-            validateOverlap(res.getEmployeeId(), res.getReservationDate(), res.getStartTime(),
-                    res.getFinishDate(), res.getId());
-        }
-
-        if (payload.getNotes() != null)
-            res.setNotes(payload.getNotes());
-        if (payload.getType() != null)
-            res.setType(payload.getType());
-
-        return mapToResponse(reservationRepository.save(res));
-    }
-
-    // --- ELIMINAR (SOFT DELETE)
-    @Transactional
-    public void delete(Long id) {
-        Reservation res = reservationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Reservación no encontrada"));
-        res.setDeletedAt(LocalDateTime.now());
-        res.setState(Reservation.Estado.CANCELADA); // Opcional: marcar como cancelada al borrar
-        reservationRepository.save(res);
-    }
-
-    // --- MÉTODOS DE APOYO (Helpers)
-    private void validateOverlap(Long empId, LocalDate date, LocalTime start, LocalTime end, Long currentId) {
-        // Nota: Aquí podrías necesitar un query que ignore el ID actual de la cita para
-        // permitir editar sin chocar con sigo misma
-        boolean occupied = reservationRepository.existsOverlappingUpdate(empId, date, start, end, currentId,
-                Reservation.Estado.PROGRAMADA);
-        if (occupied)
-            throw new ResourceConflictException("El nuevo horario choca con otra cita existente.");
-    }
-
-    private ReservationResponse mapToResponse(Reservation res) {
+    private ReservationResponse mapToResponse(Reservation r, List<ReservationDetailResponse> details) {
         return ReservationResponse.builder()
-                .id(res.getId())
-                .reservationDate(res.getReservationDate())
-                .startTime(res.getStartTime())
-                .finishDate(res.getFinishDate())
-                .state(res.getState().name())
-                .type(res.getType())
-                .notes(res.getNotes())
+                .id(r.getId())
+                .clientId(r.getClientId())
+                .warehouseId(r.getWarehouseId())
+                .reservationDate(r.getReservationDate())
+                .expirationDate(r.getExpirationDate())
+                .state(r.getState())
+                .total(r.getTotal())
+                .notes(r.getNotes())
+                .details(details)
                 .build();
     }
 }

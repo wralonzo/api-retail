@@ -1,36 +1,33 @@
 package com.wralonzo.detail_shop.modules.reservations.domain.dtos;
 
-import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.util.List;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ReservationRequest {
-    @NotNull(message = "El cliente es obligatorio")
+    @NotNull(message = "Client ID is required")
     private Long clientId;
 
-    @NotNull(message = "El almacén es obligatorio")
+    @NotNull(message = "Warehouse ID is required")
     private Long warehouseId;
 
-    @NotNull(message = "La fecha de reserva es obligatoria")
-    @FutureOrPresent(message = "La fecha de reserva no puede ser en el pasado")
     private LocalDate reservationDate;
 
-    @NotNull(message = "La hora de inicio es obligatoria")
-    private LocalTime startTime;
-
-    @NotNull(message = "La hora de finalización es obligatoria")
-    private LocalTime finishDate;
-
-    @NotBlank(message = "El tipo de reserva es obligatorio")
-    private String type;
+    // Optional expiration date override (otherwise use default)
+    private LocalDate expirationDate;
 
     private String notes;
 
-    @NotNull(message = "El empleado asignado es obligatorio")
-    private Long employee;
+    @NotEmpty(message = "Reservation must have at least one item")
+    private List<ReservationDetailRequest> items;
 }

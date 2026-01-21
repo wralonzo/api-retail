@@ -7,9 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
-
-import com.wralonzo.detail_shop.modules.customers.domain.jpa.entities.Client;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,9 +35,11 @@ public class Sale {
     @Column(name = "prefix", nullable = false, unique = true, length = 50)
     private String prefix;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_client")
-    private Client client;
+    @Column(name = "user_id", nullable = false)
+    private long userId;
+
+    @Column(name = "id_client", nullable = false)
+    private long clientId;
 
     @Column(name = "warehouse_id")
     private Long warehouseId;

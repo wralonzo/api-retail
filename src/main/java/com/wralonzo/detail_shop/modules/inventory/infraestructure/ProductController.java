@@ -1,10 +1,8 @@
 package com.wralonzo.detail_shop.modules.inventory.infraestructure;
 
-
-import com.wralonzo.detail_shop.modules.inventory.application.ProductService;
+import com.wralonzo.detail_shop.modules.inventory.application.product.ProductService;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductResponse;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,9 +24,9 @@ public class ProductController {
     public ResponseEntity<Page<ProductResponse>> getAll(
             @RequestParam(required = false) String term, // Ahora es un término general
             @RequestParam(required = false) Boolean active,
-            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long companyId,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.getAll(term, active, categoryId, pageable));
+        return ResponseEntity.ok(productService.getAll(term, active, companyId, pageable));
     }
 
     @GetMapping("/{id}")

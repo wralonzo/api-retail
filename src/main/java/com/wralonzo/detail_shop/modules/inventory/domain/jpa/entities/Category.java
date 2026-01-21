@@ -36,6 +36,9 @@ public class Category {
     @Column(nullable = false, length = 100)
     private String notes;
 
+    @Column(name = "branch_id", nullable = false)
+    private Long branchId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;

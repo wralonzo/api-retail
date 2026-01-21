@@ -25,9 +25,12 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     List<Product> findByActiveTrue();
 
-    List<Product> findByCategoryIdAndActiveTrue(Long categoryID);
+    @Query("SELECT DISTINCT p FROM Product p JOIN p.branchConfigs bc WHERE bc.category.id = :categoryId AND p.active = true")
+    List<Product> findByCategoryIdAndActiveTrue(Long categoryId);
 
     boolean existsBySkuAndActiveTrue(String sku);
 
     Optional<Product> findBySku(String sku);
+
+    Optional<Product> findBySkuAndCompanyId(String sku, Long companyId);
 }

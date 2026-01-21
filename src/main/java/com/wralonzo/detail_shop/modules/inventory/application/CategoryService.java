@@ -5,10 +5,13 @@ import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.category.CategoryRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Category;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.CategoryRepository;
+import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,15 +21,30 @@ import lombok.Builder;
 @Builder
 public class CategoryService {
   private CategoryRepository categoryRepository;
+  private final WarehouseService warehouseService;
 
   public Page<Category> getAll(Pageable pageable) {
-    return this.categoryRepository.findAll(pageable);
+    UserBusinessContext context = warehouseService.getUserBusinessContext();
+    return categoryRepository.findByBranchIdAndDeletedAtIsNull(context.branchId(), pageable);
   }
 
-  public Category create(Category category) {
-    this.categoryRepository.findByName(category.getName())
-        .orElseThrow(() -> new ResourceNotFoundException("Categoría ya existe " + category.getName()));
-    return this.categoryRepository.save(category);
+  @Transactional
+  public Category createCategory(CategoryRequest request) {
+    UserBusinessContext context = warehouseService.getUserBusinessContext();
+
+    // Si el request no trae warehouseId, usamos el del empleado por defecto
+    Long targetBranchId = (request.getBranchId() != null)
+        ? request.getBranchId()
+        : context.branchId();
+
+    Category category = Category.builder()
+        .name(request.getName())
+        .code(request.getCode())
+        .branchId(targetBranchId)
+        .notes(request.getNotes())
+        .build();
+
+    return categoryRepository.save(category);
   }
 
   public Category update(Long id, Category category) {

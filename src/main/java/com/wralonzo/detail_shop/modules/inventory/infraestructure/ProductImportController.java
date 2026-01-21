@@ -2,69 +2,78 @@ package com.wralonzo.detail_shop.modules.inventory.infraestructure;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.wralonzo.detail_shop.modules.inventory.application.ProductBatchService;
-import com.wralonzo.detail_shop.modules.inventory.application.ProductBatchService.ImportReport;
-
-import jakarta.servlet.http.HttpServletResponse;
+import com.wralonzo.detail_shop.modules.inventory.application.product.ProductBatchService;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ImportReport;
 
 @Slf4j
 @RestController
 @RequestMapping("/batch")
 @RequiredArgsConstructor
 public class ProductImportController {
-
-  private final ProductBatchService batchService;
+  private final ProductBatchService productBatchService;
 
   /**
-   * Procesa la carga masiva de productos desde un Excel.
-   * Devuelve un reporte detallado con éxitos, errores y advertencias.
+   * Descarga la plantilla de Excel configurada para la empresa del usuario.
    */
-  @PostMapping(value = "/products/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<ImportReport> importProducts(@RequestParam("file") MultipartFile file) {
-    if (file.isEmpty()) {
-      log.warn("Se intentó realizar una carga masiva con un archivo vacío.");
-      return ResponseEntity.badRequest().build();
-    }
+  @GetMapping("/template")
+  public ResponseEntity<byte[]> downloadTemplate() throws Exception {
+    byte[] template = productBatchService.generateTemplate();
 
-    try {
-      log.info("Iniciando importación masiva: {}", file.getOriginalFilename());
-      ImportReport report = batchService.importProductsFromExcel(file);
-      return ResponseEntity.ok(report);
-    } catch (Exception e) {
-      log.error("Error crítico durante la importación: ", e);
-      return ResponseEntity.internalServerError().build();
-    }
+    String filename = "plantilla_productos_" + getCurrentTimestamp() + ".xlsx";
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+        .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(template);
   }
 
   /**
-   * Genera y descarga la plantilla oficial de Excel para la carga de productos.
+   * Sube el archivo Excel para procesar los productos.
+   * Si hay errores, devuelve el archivo de reporte con las filas marcadas.
+   * if (response.status === 206) {
+   * const blob = await response.blob();
+   * const url = window.URL.createObjectURL(blob);
+   * const a = document.createElement('a');
+   * a.href = url;
+   * a.download = 'errores_importacion.xlsx';
+   * a.click();
+   * }
    */
-  @GetMapping("/products/template")
-  public void downloadTemplate(HttpServletResponse response) {
-    try {
-      byte[] excelContent = batchService.generateTemplate();
+  @PostMapping("/import")
+  public ResponseEntity<?> importProducts(@RequestParam("file") MultipartFile file) throws Exception {
+    ImportReport report = productBatchService.importProductsFromExcel(file);
 
-      // 1. Configuramos los headers directamente en el objeto response
-      response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"plantilla_productos.xlsx\"");
-      response.setContentLength(excelContent.length);
+    // Si hay errores (failed > 0), devolvemos el Excel con los detalles
+    if (report.getFailed() > 0) {
+      String filename = "reporte_errores_" + getCurrentTimestamp() + ".xlsx";
 
-      // 2. Escribimos los bytes directamente al flujo de salida
-      try (var os = response.getOutputStream()) {
-        os.write(excelContent);
-        os.flush();
-      }
-      log.info("Plantilla enviada con éxito al cliente.");
-
-    } catch (Exception e) {
-      log.error("Error crítico al descargar la plantilla: ", e);
-      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT) // 206 Partial Content
+          .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+          .header("X-Import-Created", String.valueOf(report.getCreated()))
+          .header("X-Import-Updated", String.valueOf(report.getUpdated()))
+          .header("X-Import-Failed", String.valueOf(report.getFailed()))
+          .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+          .body(report.getExcelReport());
     }
+
+    // Si todo fue exitoso o solo hubo éxitos, devolvemos JSON con el resumen
+    return ResponseEntity.ok(report);
   }
+
+  private String getCurrentTimestamp() {
+    return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm"));
+  }
+  
+
 }

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.Employee;
 import com.wralonzo.detail_shop.modules.customers.domain.jpa.entities.Client;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -56,6 +57,16 @@ public class Reservation {
     private long employeeId;
 
     private long clientId;
+
+    @Column(name = "expiration_date")
+    private LocalDateTime expirationDate;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal total = BigDecimal.ZERO;
+
+    @OneToMany(mappedBy = "reservation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<ReservationDetail> details;
 
     private Long warehouseId;
 

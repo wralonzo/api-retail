@@ -27,6 +27,9 @@ public class Payment {
     @JoinColumn(name = "credit_id")
     private Credit credit;
 
+    @Column(name = "user_id", nullable = false)
+    private long userId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;

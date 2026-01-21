@@ -34,6 +34,9 @@ public class Credit {
     @OneToMany(mappedBy = "credit", cascade = CascadeType.ALL)
     private List<Payment> payments;
 
+    @Column(name = "user_id", nullable = false)
+    private long userId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()")
     private LocalDateTime createdAt;
@@ -45,4 +48,3 @@ public class Credit {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
-

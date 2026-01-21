@@ -65,7 +65,7 @@ public class WarehouseService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
         if (isSuperAdmin) {
-            return new UserBusinessContext(null, Collections.emptyList(), true);
+            return new UserBusinessContext(null, Collections.emptyList(), true, null, null);
         }
 
         // 2. Obtener el usuario y su punto de anclaje (Warehouse)
@@ -86,6 +86,6 @@ public class WarehouseService {
         // Necesitas este método en tu WarehouseRepository
         List<Long> allWarehouseIds = warehouseRepository.findAllIdsByCompanyId(companyId);
 
-        return new UserBusinessContext(companyId, allWarehouseIds, false);
+        return new UserBusinessContext(companyId, allWarehouseIds, false, user, userWarehouse.getBranch().getId());
     }
 }

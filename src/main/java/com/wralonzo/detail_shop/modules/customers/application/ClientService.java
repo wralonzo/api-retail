@@ -26,9 +26,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-
-import com.wralonzo.detail_shop.modules.organization.application.CompanyService;
+import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
 
 @Service
 @AllArgsConstructor
@@ -39,15 +38,15 @@ public class ClientService {
     private final UserClientService userClientService;
     private final ClientMapper clientMapper;
     private final ProfileService profileService;
-    private final CompanyService companyService;
+    private final WarehouseService warehouseService;
 
     @Transactional // Importante: si falla la creación del cliente, debe revertirse el usuario
     public ClientResponse createFullClient(FullClientCreateRequest request) {
-        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
 
         Long companyId = request.getClient().getCompanyId();
-        if (companyIdOpt.isPresent()) {
-            companyId = companyIdOpt.get();
+        if (!context.isSuperAdmin()) {
+            companyId = context.companyId();
         }
 
         User userNew = null;
@@ -82,7 +81,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Page<ClientResponse> searchFullClients(String term, ClientType type, Pageable pageable) {
-        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
 
         List<Long> profileIdsFromAuth = (term != null && !term.isBlank())
                 ? profileService.findIdsByTerm(term)
@@ -92,12 +91,12 @@ public class ClientService {
                 .where(ClientSpecifications.isNotDeleted())
                 .and(ClientSpecifications.hasClientType(type))
                 .and(ClientSpecifications.containsTerm(term, profileIdsFromAuth));
-        if (companyIdOpt.isPresent()) {
+        if (!context.isSuperAdmin()) {
             /// 2. Combinar especificaciones
             spec = Specification
                     .where(ClientSpecifications.isNotDeleted())
                     .and(ClientSpecifications.hasClientType(type))
-                    .and(ClientSpecifications.hasCompanyId(companyIdOpt.get()))
+                    .and(ClientSpecifications.hasCompanyId(context.companyId()))
                     .and(ClientSpecifications.containsTerm(term, profileIdsFromAuth));
         }
 
@@ -191,16 +190,16 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     private Client findOneById(Long id) {
-        Optional<Long> companyIdOpt = companyService.getCurrentUserCompanyId();
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
 
         Specification<Client> spec = Specification
                 .where(ClientSpecifications.isNotDeleted())
                 .and((root, query, cb) -> cb.equal(root.get("id"), id));
 
-        if (companyIdOpt.isPresent()) {
+        if (!context.isSuperAdmin()) {
             spec = Specification
                     .where(ClientSpecifications.isNotDeleted())
-                    .and(ClientSpecifications.hasCompanyId(companyIdOpt.get()))
+                    .and(ClientSpecifications.hasCompanyId(context.companyId()))
                     .and((root, query, cb) -> cb.equal(root.get("id"), id));
         }
 

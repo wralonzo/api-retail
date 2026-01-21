@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnit;
+
 @Entity
 @Table(name = "sale_detail")
 @Data
@@ -28,6 +30,10 @@ public class SaleDetail {
     @JoinColumn(name = "id_product", nullable = false)
     private Product product;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_product_unit", nullable = false)
+    private ProductUnit unit;
+
     @Column(nullable = false)
     private Integer quantity;
 
@@ -45,7 +51,7 @@ public class SaleDetail {
     @PreUpdate
     public void calcularSubtotal() {
         if (quantity != null && priceUnit != null) {
-                BigDecimal total = priceUnit.multiply(BigDecimal.valueOf(quantity));
+            BigDecimal total = priceUnit.multiply(BigDecimal.valueOf(quantity));
             this.subtotal = total.subtract(discount != null ? discount : BigDecimal.ZERO);
         }
     }

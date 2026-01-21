@@ -27,8 +27,7 @@ public class ProductSpecifications {
     return (root, query, cb) -> (active == null) ? cb.conjunction() : cb.equal(root.get("active"), active);
   }
 
-  public static Specification<Product> hasCategory(Long categoryId) {
-    return (root, query, cb) -> (categoryId == null) ? cb.conjunction()
-        : cb.equal(root.get("category").get("id"), categoryId);
+  public static Specification<Product> hasCompany(Long companyId) {
+    return (root, query, cb) -> companyId == null ? null : cb.equal(root.get("companyId"), companyId);
   }
 }

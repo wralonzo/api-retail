@@ -26,6 +26,9 @@ public class Order {
 
     private String state;
 
+    @Column(name = "user_id", nullable = false)
+    private long userId;
+
     @ManyToOne
     @JoinColumn(name = "client_id")
     private Client client;

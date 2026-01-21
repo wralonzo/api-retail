@@ -1,8 +1,11 @@
 package com.wralonzo.detail_shop.modules.inventory.domain.dtos.product;
+
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import java.util.List;
+import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
 
 @Data
 public class ProductRequest {
@@ -31,4 +34,10 @@ public class ProductRequest {
 
     @Positive(message = "El precio debe ser mayor a 0.")
     private Long categoryId;
+
+    private ProductType type; // STANDARD, BUNDLE
+
+    private List<ProductUnitDto> units; // Unidades adicionales
+
+    private List<ProductBundleDto> bundleItems; // Items si es combo
 }

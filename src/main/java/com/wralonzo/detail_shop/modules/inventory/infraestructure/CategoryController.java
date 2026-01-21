@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.wralonzo.detail_shop.infrastructure.adapters.ResponseUtil;
 import com.wralonzo.detail_shop.modules.inventory.application.CategoryService;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.category.CategoryRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Category;
 
 import jakarta.validation.Valid;
@@ -39,8 +40,8 @@ public class CategoryController {
 
   @PostMapping()
   public ResponseEntity<Category> create(
-      @Valid @RequestBody Category request) {
-    Category category = this.categoryService.create(request);
+      @Valid @RequestBody CategoryRequest request) {
+    Category category = this.categoryService.createCategory(request);
     return ResponseUtil.ok(category);
   }
 

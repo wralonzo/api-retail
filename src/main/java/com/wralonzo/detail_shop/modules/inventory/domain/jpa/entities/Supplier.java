@@ -22,13 +22,23 @@ public class Supplier {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 100)
     private String name;
+
+    @Column(length = 100)
     private String email;
+
+    @Column(length = 50)
     private String phone;
+
+    @Column(length = 200)
     private String address;
 
     @Column(name = "company_name", length = 100)
     private String companyName;
+
+    @Column(name = "tax_id", length = 50)
+    private String tax_id;
 
     @Column(name = "code", length = 50)
     private String code;
@@ -44,6 +54,6 @@ public class Supplier {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @Column(name = "warehouse_id")
-    private Long warehouseId;
+    @Column(name = "company_id")
+    private Long company_id;
 }

@@ -83,7 +83,7 @@ public class UserController {
     }
 
     @GetMapping("/user")
-    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<Page<LoginResponse>> getAll(
             @RequestParam(required = false) String term,
             @RequestParam(required = false) String roleName,
@@ -99,7 +99,7 @@ public class UserController {
         return ResponseUtil.ok(users);
     }
 
-    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN'), 'ROLE_ADMIN')")
     @PatchMapping("/user/{id}/password")
     public ResponseEntity<?> changePassword(
             @PathVariable Long id,
