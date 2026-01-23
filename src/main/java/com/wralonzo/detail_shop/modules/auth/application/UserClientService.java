@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
@@ -27,16 +28,22 @@ public class UserClientService {
   private final PasswordEncoder passwordEncoder;
   private final RoleService roleService;
 
+  @Transactional
   public User createClient(UserCreateRequest request) {
+    // Validar que NO exista el usuario antes de crearlo
     this.userRepository.findByUsername(request.getUsername())
-        .orElseThrow(() -> new ResourceConflictException(
-            "Ya existe el usuario: " + request.getUsername() + ", recupera tus credenciales"));
+        .ifPresent(existingUser -> {
+          throw new ResourceConflictException(
+              "Ya existe el usuario: " + request.getUsername() + ", recupera tus credenciales");
+        });
     // 2. Crear la entidad Profile
     Profile profile = Profile.builder()
         .fullName(request.getFullName())
         .phone(request.getPhone())
         .address(request.getAddress())
         .avatar(request.getAvatar())
+        .email(request.getEmail())
+        .birthDate(request.getBirthDate())
         // El email p
         // odrías guardarlo en el perfil o en el usuario
         .build();
@@ -65,22 +72,28 @@ public class UserClientService {
     return savedUser;
   }
 
-  public void updateClient(User user, Long id) {
+  public User updateClient(UserCreateRequest request, Long id) {
     User userFind = this.userRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
-    if (user.getUsername() != null)
-      userFind.setUsername(user.getUsername());
-    if (user.getProfile().getPhone() != null)
-      userFind.getProfile().setPhone(user.getProfile().getPhone());
-    if (user.getProfile().getAddress() != null)
-      userFind.getProfile().setAddress(user.getProfile().getAddress());
-    if (user.getProfile().getAvatar() != null)
-      userFind.getProfile().setAvatar(user.getProfile().getAvatar());
+    if (request.getUsername() != null)
+      userFind.setUsername(request.getUsername());
+    if (request.getPhone() != null)
+      userFind.getProfile().setPhone(request.getPhone());
+    if (request.getAddress() != null)
+      userFind.getProfile().setAddress(request.getAddress());
+    if (request.getAvatar() != null)
+      userFind.getProfile().setAvatar(request.getAvatar());
+    if (request.getEmail() != null)
+      userFind.getProfile().setEmail(request.getEmail());
+    if (request.getFullName() != null)
+      userFind.getProfile().setFullName(request.getFullName());
+    if (request.getBirthDate() != null)
+      userFind.getProfile().setBirthDate(request.getBirthDate());
 
-    user.setUpdateAt(LocalDateTime.now());
-    user.getProfile().setUpdateAt(LocalDateTime.now());
-    userRepository.save(user);
+    userFind.setUpdateAt(LocalDateTime.now());
+    userFind.getProfile().setUpdateAt(LocalDateTime.now());
+    return userRepository.save(userFind);
   }
 
   public User searchById(Long id) {

@@ -40,7 +40,7 @@ public class UserController {
     private final ClientService clientService;
 
     @PostMapping("/auth/login")
-    public ResponseEntity<LoginResponse> createUser(@Valid @RequestBody LoginRequest user) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest user) {
         LoginResponse saveUser = this.userService.login(user);
         return ResponseEntity.ok(saveUser);
     }
@@ -73,7 +73,7 @@ public class UserController {
     }
 
     @PatchMapping("/user/{id}")
-    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<LoginResponse> updateUser(
             @PathVariable Long id,
             @Valid @RequestBody UserStaffCreateRequest request) {
@@ -93,13 +93,14 @@ public class UserController {
         return ResponseUtil.ok(users);
     }
 
-    @PreAuthorize("hasAuthority('USER_PROFILE')")
+    @GetMapping("/user/{id}/profile")
+    @PreAuthorize("hasAnyAuthority('USER_PROFILE', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<LoginResponse> profile(@PathVariable Long id) {
         LoginResponse users = this.userService.getById(id);
         return ResponseUtil.ok(users);
     }
 
-    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN'), 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('USER_CREATE', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     @PatchMapping("/user/{id}/password")
     public ResponseEntity<?> changePassword(
             @PathVariable Long id,

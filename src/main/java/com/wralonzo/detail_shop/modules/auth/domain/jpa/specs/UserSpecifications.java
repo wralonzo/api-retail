@@ -36,8 +36,11 @@ public class UserSpecifications {
       if (term != null && !term.trim().isEmpty()) {
         String pattern = "%" + term.toLowerCase() + "%";
 
+        // Hacemos el JOIN programático con Profile
+        Join<User, Profile> profileJoin = root.join("profile", jakarta.persistence.criteria.JoinType.LEFT);
+
         Predicate usernameLike = cb.like(cb.lower(root.get("username")), pattern);
-        Predicate fullNameLike = cb.like(cb.lower(root.get("fullName")), pattern);
+        Predicate fullNameLike = cb.like(cb.lower(profileJoin.get("fullName")), pattern);
 
         predicates.add(cb.or(usernameLike, fullNameLike));
       }

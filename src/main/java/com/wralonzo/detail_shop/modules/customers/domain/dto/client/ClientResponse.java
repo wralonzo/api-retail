@@ -18,7 +18,6 @@ public class ClientResponse {
     private ClientType clientType;
     private Long companyId;
     private String taxId;
-    private String notes;
     private LocalDate birthDate;
 
     // --- Identidad (Módulo Auth - Siempre presente) ---
@@ -28,4 +27,5 @@ public class ClientResponse {
     // --- Credenciales de Acceso (Módulo Auth - Opcional) ---
     // Contiene: username, roles, enabled. Será null si el cliente no tiene usuario.
     private UserShortResponse user;
+    private String preferredDeliveryAddress;
 }

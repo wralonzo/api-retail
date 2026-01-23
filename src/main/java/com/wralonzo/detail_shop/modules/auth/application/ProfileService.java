@@ -34,6 +34,7 @@ public class ProfileService {
         .address(request.getAddress())
         .avatar(request.getAvatar())
         .email((request.getEmail()))
+        .birthDate(request.getBirthDate())
         .build();
     return profileRepository.save(profile);
   }
@@ -48,6 +49,7 @@ public class ProfileService {
     if (request.getEmail() != null
         && !request.getEmail().equalsIgnoreCase(profile.getEmail())) {
       this.emailExist(request.getEmail());
+      profile.setEmail(request.getEmail());
     }
 
     if (request.getFullName() != null) {
@@ -64,6 +66,9 @@ public class ProfileService {
 
     if (request.getAvatar() != null) {
       profile.setAvatar(request.getAvatar());
+    }
+    if (request.getBirthDate() != null) {
+      profile.setBirthDate(request.getBirthDate());
     }
 
     profileRepository.save(profile);

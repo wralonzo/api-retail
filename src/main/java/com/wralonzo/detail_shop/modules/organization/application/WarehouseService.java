@@ -40,7 +40,12 @@ public class WarehouseService {
                 .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
     }
 
-    public Warehouse getByCode(String code) {
+    public WarehouseProjection getOneRecord(Long id) {
+        return warehouseRepository.findGetById(id)
+                .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
+    }
+
+    public WarehouseProjection getByCode(String code) {
         return warehouseRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
     }

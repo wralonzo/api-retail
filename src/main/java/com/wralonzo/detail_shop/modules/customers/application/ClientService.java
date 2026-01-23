@@ -124,8 +124,8 @@ public class ClientService {
         Profile profile = null;
         User user = null;
         if (client.getUserId() != null) {
-            User userExists = authService.findById(client.getUserId());
-            profile = userExists.getProfile();
+            user = authService.findById(client.getUserId());
+            profile = user.getProfile();
 
         } else {
             profile = profileService.getById(client.getProfileId());
@@ -153,7 +153,7 @@ public class ClientService {
         Client client = findOneById(id);
 
         // 1. Actualizar perfil
-        Profile profile = profileService.update(client.getProfileId(), request.getAuth());
+        User user = userClientService.updateClient(request.getAuth(), client.getUserId());
 
         // 2. Actualizar negocio
         if (request.getClient().getClientType() != null)
@@ -167,10 +167,8 @@ public class ClientService {
         this.clientRepository.save(client);
 
         // 3. Cargar usuario si existe (Entidad)
-        User user = (client.getUserId() != null) ? userClientService.searchById(client.getUserId()) : null;
-
         // Aquí se resuelve tu error: enviamos (Client, Profile, User)
-        return clientMapper.toResponse(client, profile, user);
+        return clientMapper.toResponse(client, user.getProfile(), user);
 
     }
 

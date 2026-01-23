@@ -71,7 +71,7 @@ public class AuthService {
   }
 
   public User findById(long id) {
-    return userRepository.findById(null).orElse(null);
+    return userRepository.findById(id).orElse(null);
   }
 
   public Map<Long, UserAuthDto> getUsersAuthData(List<Long> userIds) {

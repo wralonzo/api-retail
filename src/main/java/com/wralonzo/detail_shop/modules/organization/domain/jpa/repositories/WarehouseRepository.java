@@ -13,7 +13,9 @@ import java.util.List;
 public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<WarehouseProjection> findAllProjectedBy();
 
-    Optional<Warehouse> findByCode(String code);
+    Optional<WarehouseProjection> findByCode(String code);
+
+    Optional<WarehouseProjection> findGetById(Long id);
 
     @Query("SELECT w.id FROM Warehouse w WHERE w.branch.company.id = :companyId")
     List<Long> findAllIdsByCompanyId(@Param("companyId") Long companyId);

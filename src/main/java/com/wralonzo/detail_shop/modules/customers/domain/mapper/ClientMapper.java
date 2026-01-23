@@ -22,6 +22,7 @@ public interface ClientMapper {
 
   @Mapping(target = "id", source = "client.id")
   @Mapping(target = "code", source = "client.code")
+  @Mapping(target = "birthDate", source = "profile.birthDate")
   @Mapping(target = "profile", source = "profile")
   @Mapping(target = "user", source = "authData")
   ClientResponse toResponse(Client client, Profile profile, UserAuthDto authData);
@@ -29,6 +30,7 @@ public interface ClientMapper {
   @Mapping(target = "id", source = "client.id")
   @Mapping(target = "code", source = "client.code")
   @Mapping(target = "profile", source = "profile")
+  @Mapping(target = "birthDate", source = "profile.birthDate")
   @Mapping(target = "user", source = "user")
   ClientResponse toResponse(Client client, Profile profile, User user);
 
