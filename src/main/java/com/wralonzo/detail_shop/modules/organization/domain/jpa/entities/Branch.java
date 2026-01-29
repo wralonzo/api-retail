@@ -1,5 +1,6 @@
 package com.wralonzo.detail_shop.modules.organization.domain.jpa.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Branch {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

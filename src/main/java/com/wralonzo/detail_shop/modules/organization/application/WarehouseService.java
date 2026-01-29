@@ -4,15 +4,20 @@ import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.projections.WarehouseProjection;
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
+import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceUnauthorizedException;
 
 import lombok.AllArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.wralonzo.detail_shop.modules.organization.domain.dtos.warehouse.WarehouseRequest;
+import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Branch;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.BranchRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.WarehouseRepository;
@@ -31,23 +36,23 @@ public class WarehouseService {
     private final UserRepository userRepository;
     private final BranchRepository branchRepository;
 
-    public List<WarehouseProjection> getAll() {
-        return this.warehouseRepository.findAllProjectedBy();
+    public Page<WarehouseProjection> getAll(Pageable pageable) {
+        return warehouseRepository.findAllProjectedBy(pageable);
     }
 
     public Warehouse getById(long id) {
         return warehouseRepository.findById(id)
-                .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
+                .orElseThrow(() -> new ResourceNotFoundException("Almacén no encontrado con ID: " + id));
     }
 
     public WarehouseProjection getOneRecord(Long id) {
         return warehouseRepository.findGetById(id)
-                .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
+                .orElseThrow(() -> new ResourceNotFoundException("Almacén no encontrado con ID: " + id));
     }
 
     public WarehouseProjection getByCode(String code) {
         return warehouseRepository.findByCode(code)
-                .orElseThrow(() -> new ResourceConflictException("No existe el almacén"));
+                .orElseThrow(() -> new ResourceNotFoundException("Almacén no encontrado con código: " + code));
     }
 
     public Map<Long, Warehouse> getWarehousesMap(List<Long> ids) {
@@ -55,6 +60,64 @@ public class WarehouseService {
             return Map.of();
         return warehouseRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Warehouse::getId, Function.identity()));
+    }
+
+    @Transactional
+    public Warehouse create(WarehouseRequest request) {
+        // Verificar que la sucursal existe
+        Branch branch = branchRepository.findById(request.getBranchId())
+                .orElseThrow(
+                        () -> new ResourceNotFoundException("Sucursal no encontrada con ID: " + request.getBranchId()));
+
+        Warehouse warehouse = Warehouse.builder()
+                .name(request.getName())
+                .phone(request.getPhone())
+                .code(request.getCode())
+                .active(request.getActive() != null ? request.getActive() : true)
+                .branch(branch)
+                .build();
+
+        warehouseRepository.save(warehouse);
+        return Warehouse.builder()
+                .id(warehouse.getId())
+                .name(warehouse.getName())
+                .phone(warehouse.getPhone())
+                .code(warehouse.getCode())
+                .build();
+    }
+
+    @Transactional
+    public Warehouse update(Long id, WarehouseRequest request) {
+        Warehouse warehouse = getById(id);
+
+        // Verificar que la sucursal existe si se está cambiando
+        if (request.getBranchId() != null && !request.getBranchId().equals(warehouse.getBranch().getId())) {
+            Branch branch = branchRepository.findById(request.getBranchId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Sucursal no encontrada con ID: " + request.getBranchId()));
+            warehouse.setBranch(branch);
+        }
+
+        warehouse.setName(request.getName());
+        warehouse.setPhone(request.getPhone());
+        warehouse.setCode(request.getCode());
+        if (request.getActive() != null) {
+            warehouse.setActive(request.getActive());
+        }
+
+        warehouseRepository.save(warehouse);
+        return Warehouse.builder()
+                .id(warehouse.getId())
+                .name(warehouse.getName())
+                .phone(warehouse.getPhone())
+                .code(warehouse.getCode())
+                .build();
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Warehouse warehouse = getById(id);
+        warehouseRepository.delete(warehouse);
     }
 
     @Transactional(readOnly = true)

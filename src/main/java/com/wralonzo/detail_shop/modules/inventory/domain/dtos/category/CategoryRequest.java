@@ -2,7 +2,6 @@ package com.wralonzo.detail_shop.modules.inventory.domain.dtos.category;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
@@ -23,7 +22,6 @@ public class CategoryRequest {
 
   private String notes;
 
-  @NotNull()
   @Positive()
   private Long branchId;
 }

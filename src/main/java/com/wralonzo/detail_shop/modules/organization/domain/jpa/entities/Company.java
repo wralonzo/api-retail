@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,17 +22,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-  name = "companies",
-  schema = "organization",
-  uniqueConstraints = {
+@Table(name = "companies", schema = "organization", uniqueConstraints = {
     @UniqueConstraint(name = "uk_company_tax_id", columnNames = "tax_id")
-  })
+})
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Company {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)

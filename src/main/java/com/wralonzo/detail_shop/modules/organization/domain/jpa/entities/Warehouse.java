@@ -1,19 +1,19 @@
 package com.wralonzo.detail_shop.modules.organization.domain.jpa.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
-@Table(
-    name = "warehouses",
-    schema = "organization")
+@Table(name = "warehouses", schema = "organization")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @EntityListeners(AuditingEntityListener.class)
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Warehouse {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

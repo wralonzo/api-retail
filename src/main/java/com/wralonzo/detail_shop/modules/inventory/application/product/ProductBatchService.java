@@ -282,7 +282,7 @@ public class ProductBatchService {
       return;
 
     DataValidationHelper helper = new XSSFDataValidationHelper(sheet);
-    CellRangeAddressList addressList = new CellRangeAddressList(1, 1000, col, col);
+    CellRangeAddressList addressList = new CellRangeAddressList(1, 10, col, col);
     DataValidationConstraint constraint = helper.createExplicitListConstraint(options.toArray(new String[0]));
     DataValidation validation = helper.createValidation(constraint, addressList);
     validation.setShowErrorBox(true);

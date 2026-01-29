@@ -81,6 +81,12 @@ public class ProductService {
             throw new ResourceConflictException("Ya existe un producto con el SKU: " + request.getSku());
         }
 
+        if (request.getType() == ProductType.BUNDLE && request.getBundleItems() == null) {
+            throw new ResourceConflictException("Ya existe un producto con el SKU: " + request.getSku());
+        }
+
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
+
         Product product = Product.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -90,6 +96,7 @@ public class ProductService {
                 .sku(request.getSku().toUpperCase())
                 .active(true)
                 .type(request.getType() != null ? request.getType() : ProductType.STANDARD)
+                .companyId(context.companyId())
                 .build();
 
         // 1. Manejo de Unidades Adicionales

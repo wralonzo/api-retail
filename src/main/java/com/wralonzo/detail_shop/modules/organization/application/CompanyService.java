@@ -2,11 +2,14 @@ package com.wralonzo.detail_shop.modules.organization.application;
 
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.wralonzo.detail_shop.modules.organization.domain.dtos.company.CompanyRequest;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.BranchRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.CompanyRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Company;
@@ -14,6 +17,7 @@ import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehou
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.entities.User; // Asegura este import
 import com.wralonzo.detail_shop.modules.auth.domain.jpa.repositories.UserRepository;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
+import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.configuration.exception.ResourceUnauthorizedException;
 import lombok.AllArgsConstructor;
 
@@ -25,9 +29,45 @@ public class CompanyService {
   private final BranchRepository branchRepository;
   private final UserRepository userRepository;
 
+  public Page<Company> getAll(Pageable pageable) {
+    return companyRespository.findAll(pageable);
+  }
+
   public Company getById(Long id) {
     return companyRespository.findById(id)
-        .orElseThrow(() -> new ResourceConflictException("La unidad de negocio no existe"));
+        .orElseThrow(() -> new ResourceNotFoundException("La compañía no existe con ID: " + id));
+  }
+
+  @Transactional
+  public Company create(CompanyRequest request) {
+    Company company = Company.builder()
+        .businessName(request.getBusinessName())
+        .taxId(request.getTaxId())
+        .address(request.getAddress())
+        .phone(request.getPhone())
+        .email(request.getEmail())
+        .build();
+
+    return companyRespository.save(company);
+  }
+
+  @Transactional
+  public Company update(Long id, CompanyRequest request) {
+    Company company = getById(id);
+
+    company.setBusinessName(request.getBusinessName());
+    company.setTaxId(request.getTaxId());
+    company.setAddress(request.getAddress());
+    company.setPhone(request.getPhone());
+    company.setEmail(request.getEmail());
+
+    return companyRespository.save(company);
+  }
+
+  @Transactional
+  public void delete(Long id) {
+    Company company = getById(id);
+    companyRespository.delete(company);
   }
 
   /**
