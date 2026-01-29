@@ -5,6 +5,7 @@ import lombok.*;
 
 // Para manejar mezclas de DIFERENTES productos (Combos)
 @Entity
+@Table(name = "product_bundles", schema = "inventory")
 @Getter
 @Setter
 @Builder

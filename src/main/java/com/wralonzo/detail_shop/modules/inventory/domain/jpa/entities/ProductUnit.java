@@ -7,6 +7,7 @@ import lombok.*;
 
 // Para manejar Fardos, Docenas, Six-packs del MISMO producto
 @Entity
+@Table(name = "product_units", schema = "inventory")
 @Getter
 @Setter
 @Builder
