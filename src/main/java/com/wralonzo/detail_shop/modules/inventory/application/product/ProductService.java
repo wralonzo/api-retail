@@ -9,6 +9,7 @@ import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductBun
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductUnitRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.specs.ProductSpecifications;
 import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
 import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
@@ -30,6 +31,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final WarehouseService warehouseService;
+    private final ProductUnitRepository productUnitRepository;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> getAll(String term, Boolean active, Long requestedCompanyId,
@@ -100,31 +102,10 @@ public class ProductService {
                 .build();
 
         // 1. Manejo de Unidades Adicionales
-        if (request.getUnits() != null) {
-            List<ProductUnit> units = request.getUnits().stream().map(dto -> ProductUnit.builder()
-                    .product(product)
-                    .name(dto.getUnitName())
-                    .conversionFactor(dto.getConversionFactor())
-                    .barcode(dto.getBarcode())
-                    .isBase(false)
-                    .build()).toList();
-            product.getUnits().addAll(units);
-        }
+        handleProductUnits(product, request.getUnits());
 
         // 2. Manejo de Combos (Bundles)
-        if (product.getType() == ProductType.BUNDLE && request.getBundleItems() != null) {
-            List<ProductBundle> bundles = request.getBundleItems().stream().map(dto -> {
-                Product child = productRepository.findById(dto.getChildProductId())
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Producto hijo no encontrado ID: " + dto.getChildProductId()));
-                return ProductBundle.builder()
-                        .comboProduct(product)
-                        .componentProduct(child)
-                        .quantity(dto.getQuantity())
-                        .build();
-            }).toList();
-            product.getBundleItems().addAll(bundles);
-        }
+        handleProductBundles(product, request.getBundleItems());
 
         return mapToResponse(productRepository.save(product));
     }
@@ -158,20 +139,39 @@ public class ProductService {
         // Actualizar Unidades (Reemplazo simple por ahora, idealmente merge)
         if (request.getUnits() != null) {
             product.getUnits().clear();
-            List<ProductUnit> units = request.getUnits().stream().map(dto -> ProductUnit.builder()
-                    .product(product)
-                    .name(dto.getUnitName())
-                    .conversionFactor(dto.getConversionFactor())
-                    .barcode(dto.getBarcode())
-                    .isBase(false)
-                    .build()).toList();
-            product.getUnits().addAll(units);
+            handleProductUnits(product, request.getUnits());
         }
 
         // Actualizar Bundle Items
         if (product.getType() == ProductType.BUNDLE && request.getBundleItems() != null) {
             product.getBundleItems().clear();
-            List<ProductBundle> bundles = request.getBundleItems().stream().map(dto -> {
+            handleProductBundles(product, request.getBundleItems());
+        }
+
+        return mapToResponse(productRepository.save(product));
+    }
+
+    private void handleProductUnits(Product product, List<ProductUnitDto> unitsDto) {
+        if (unitsDto != null) {
+            List<ProductUnitDetails> units = unitsDto.stream().map(dto -> {
+                ProductUnit unit = this.productUnitRepository.findById(dto.getId())
+                        .orElseThrow(() -> new ResourceNotFoundException(
+                                "Unidad no encontrada ID: " + dto.getId()));
+                return ProductUnitDetails.builder()
+                        .product(product)
+                        .unitProduct(unit)
+                        // Note: Assuming DTO has fields for conversionFactor/barcode/isBase if needed
+                        // here
+                        // For now just linking the unit based on entity logic
+                        .build();
+            }).toList();
+            product.getUnits().addAll(units);
+        }
+    }
+
+    private void handleProductBundles(Product product, List<ProductBundleDto> bundlesDto) {
+        if (product.getType() == ProductType.BUNDLE && bundlesDto != null) {
+            List<ProductBundle> bundles = bundlesDto.stream().map(dto -> {
                 Product child = productRepository.findById(dto.getChildProductId())
                         .orElseThrow(() -> new ResourceNotFoundException(
                                 "Producto hijo no encontrado ID: " + dto.getChildProductId()));
@@ -183,8 +183,6 @@ public class ProductService {
             }).toList();
             product.getBundleItems().addAll(bundles);
         }
-
-        return mapToResponse(productRepository.save(product));
     }
 
     // --- 5. ELIMINACIÓN LÓGICA (SOFT DELETE)
@@ -213,9 +211,7 @@ public class ProductService {
                 .type(p.getType())
                 .units(p.getUnits().stream().map(u -> {
                     ProductUnitDto dto = new ProductUnitDto();
-                    dto.setUnitName(u.getName());
-                    dto.setConversionFactor(u.getConversionFactor());
-                    dto.setBarcode(u.getBarcode());
+                    dto.setId(u.getUnitProduct().getId());
                     return dto;
                 }).toList())
                 .bundleItems(p.getType() == ProductType.BUNDLE ? p.getBundleItems().stream().map(b -> {

@@ -86,10 +86,10 @@ public class ReservationService {
           .orElseThrow(() -> new ResourceNotFoundException(
               "Producto ID " + itemReq.getProductId() + " no encontrado"));
 
-      ProductUnit unit = product.getUnits().stream()
-          .filter(u -> u.getId().equals(itemReq.getUnitId()))
-          .findFirst()
-          .orElseThrow(() -> new ResourceNotFoundException("Unidad inválida"));
+      // ProductUnit unit = product.getUnits().stream()
+      // .filter(u -> u.getId().equals(itemReq.getUnitId()))
+      // .findFirst()
+      // .orElseThrow(() -> new ResourceNotFoundException("Unidad inválida"));
 
       // Buscar precio
       ProductBranchConfig branchConfig = branchConfigRepository
@@ -97,18 +97,18 @@ public class ReservationService {
           .orElseThrow(() -> new ResourceNotFoundException(
               "Producto no habilitado en sucursal"));
 
-      BigDecimal unitPrice = branchConfig.getPrices().stream()
-          .filter(p -> p.getUnit().getId().equals(unit.getId()))
-          .findFirst()
-          .map(ProductBranchPrice::getPrice)
-          .orElseThrow(() -> new ResourceNotFoundException("Precio no configurado"));
+      // BigDecimal unitPrice = branchConfig.getPrices().stream()
+      // .filter(p -> p.getUnit().getId().equals(unit.getId()))
+      // .findFirst()
+      // .map(ProductBranchPrice::getPrice)
+      // .orElseThrow(() -> new ResourceNotFoundException("Precio no configurado"));
 
       ReservationDetail detail = ReservationDetail.builder()
           .reservation(reservation)
           .product(product)
-          .unit(unit)
+          // .unit(unit)
           .quantity(itemReq.getQuantity())
-          .priceUnit(unitPrice)
+          // .priceUnit(unitPrice)
           .build();
       detail.calculateSubtotal();
 
@@ -118,8 +118,8 @@ public class ReservationService {
       detailsResponse.add(ReservationDetailResponse.builder()
           .productId(product.getId())
           .productName(product.getName())
-          .unitId(unit.getId())
-          .unitName(unit.getName())
+          // .unitId(unit.getId())
+          // .unitName(unit.getName())
           .quantity(detail.getQuantity())
           .priceUnit(detail.getPriceUnit())
           .subtotal(detail.getSubtotal())
@@ -133,10 +133,10 @@ public class ReservationService {
               request.getWarehouseId(), qtyToReserve);
         }
       } else {
-        int baseQty = unit.getConversionFactor()
-            .multiply(BigDecimal.valueOf(itemReq.getQuantity())).intValue();
+        // int baseQty = unit.getConversionFactor()
+        // .multiply(BigDecimal.valueOf(itemReq.getQuantity())).intValue();
         inventoryMovementService.reserveStock(product.getId(), request.getWarehouseId(),
-            baseQty);
+            itemReq.getQuantity());
       }
     }
 

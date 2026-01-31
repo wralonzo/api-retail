@@ -63,8 +63,12 @@ public class Product {
         private Boolean active = true;
 
         @Builder.Default
+        @Column(nullable = false)
+        private Boolean isService = false;
+
+        @Builder.Default
         @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-        private List<ProductUnit> units = new ArrayList<>();
+        private List<ProductUnitDetails> units = new ArrayList<>();
 
         @Builder.Default
         @OneToMany(mappedBy = "comboProduct", cascade = CascadeType.ALL, orphanRemoval = true)

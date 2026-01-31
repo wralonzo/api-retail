@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ImportReport;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.RowError;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Category;
@@ -34,9 +35,11 @@ import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Product;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductBranchConfig;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductBranchPrice;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnit;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnitDetails;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.CategoryRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductBranchConfigRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductUnitRepository;
 import com.wralonzo.detail_shop.modules.organization.application.BranchService;
 import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Branch;
@@ -55,6 +58,7 @@ public class ProductBatchService {
   private final CategoryRepository categoryRepository;
   private final WarehouseService warehouseService;
   private final BranchService branchService;
+  private final ProductUnitRepository productUnitRepository;
 
   public ImportReport importProductsFromExcel(MultipartFile file) throws Exception {
     UserBusinessContext context = warehouseService.getUserBusinessContext();
@@ -118,13 +122,14 @@ public class ProductBatchService {
 
     // Si es nuevo y no tiene unidades, crear la unidad base por defecto
     if (isNew && (product.getUnits() == null || product.getUnits().isEmpty())) {
-      ProductUnit baseUnit = ProductUnit.builder()
+      ProductUnit baseUnit = this.productUnitRepository.findById(1L)
+          .orElseThrow(() -> new ResourceNotFoundException(
+              "Unidad no encontrada ID: 1"));
+      ProductUnitDetails productUnitDetails = ProductUnitDetails.builder()
           .product(product)
-          .name("Unidad")
-          .conversionFactor(BigDecimal.ONE)
-          .isBase(true)
+          .unitProduct(baseUnit)
           .build();
-      product.getUnits().add(baseUnit);
+      product.getUnits().add(productUnitDetails);
     }
 
     product = productRepository.save(product);
@@ -162,24 +167,25 @@ public class ProductBatchService {
 
     // Actualizar o crear precio para la unidad base
     final ProductBranchConfig finalConfig = config; // effective final for lambda
-    product.getUnits().stream().filter(u -> u.isBase()).findFirst().ifPresent(baseUnit -> {
-      // Buscar si ya existe precio para esta unidad
-      Optional<ProductBranchPrice> existingPrice = finalConfig.getPrices().stream()
-          .filter(p -> p.getUnit().getId().equals(baseUnit.getId()))
-          .findFirst();
+    // product.getUnits().stream().filter(u ->
+    // u.isBase()).findFirst().ifPresent(baseUnit -> {
+    // // Buscar si ya existe precio para esta unidad
+    // Optional<ProductBranchPrice> existingPrice = finalConfig.getPrices().stream()
+    // .filter(p -> p.getUnit().getId().equals(baseUnit.getId()))
+    // .findFirst();
 
-      if (existingPrice.isPresent()) {
-        existingPrice.get().setPrice(product.getBasePrice());
-      } else {
-        ProductBranchPrice newPrice = ProductBranchPrice.builder()
-            .branchConfig(finalConfig)
-            .unit(baseUnit)
-            .price(product.getBasePrice())
-            .active(true)
-            .build();
-        finalConfig.getPrices().add(newPrice);
-      }
-    });
+    // if (existingPrice.isPresent()) {
+    // existingPrice.get().setPrice(product.getBasePrice());
+    // } else {
+    // ProductBranchPrice newPrice = ProductBranchPrice.builder()
+    // .branchConfig(finalConfig)
+    // //.unitProduct(baseUnit)
+    // .price(product.getBasePrice())
+    // .active(true)
+    // .build();
+    // finalConfig.getPrices().add(newPrice);
+    // }
+    // });
 
     branchConfigRepository.save(config);
   }
