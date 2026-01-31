@@ -23,7 +23,7 @@ public class ProductUnit {
     private Product product;
 
     @Column(nullable = false)
-    private String unitName; // "Unidad", "Fardo", "Caja"
+    private String name; // "Unidad", "Fardo", "Caja"
 
     @Column(nullable = false, precision = 10, scale = 4)
     private BigDecimal conversionFactor; // 1 for base, 24 for Fardo

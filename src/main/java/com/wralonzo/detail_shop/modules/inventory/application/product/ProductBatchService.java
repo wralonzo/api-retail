@@ -120,7 +120,7 @@ public class ProductBatchService {
     if (isNew && (product.getUnits() == null || product.getUnits().isEmpty())) {
       ProductUnit baseUnit = ProductUnit.builder()
           .product(product)
-          .unitName("Unidad")
+          .name("Unidad")
           .conversionFactor(BigDecimal.ONE)
           .isBase(true)
           .build();

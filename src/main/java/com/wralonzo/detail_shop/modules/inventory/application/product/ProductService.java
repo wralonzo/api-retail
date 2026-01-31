@@ -103,7 +103,7 @@ public class ProductService {
         if (request.getUnits() != null) {
             List<ProductUnit> units = request.getUnits().stream().map(dto -> ProductUnit.builder()
                     .product(product)
-                    .unitName(dto.getUnitName())
+                    .name(dto.getUnitName())
                     .conversionFactor(dto.getConversionFactor())
                     .barcode(dto.getBarcode())
                     .isBase(false)
@@ -160,7 +160,7 @@ public class ProductService {
             product.getUnits().clear();
             List<ProductUnit> units = request.getUnits().stream().map(dto -> ProductUnit.builder()
                     .product(product)
-                    .unitName(dto.getUnitName())
+                    .name(dto.getUnitName())
                     .conversionFactor(dto.getConversionFactor())
                     .barcode(dto.getBarcode())
                     .isBase(false)
@@ -213,7 +213,7 @@ public class ProductService {
                 .type(p.getType())
                 .units(p.getUnits().stream().map(u -> {
                     ProductUnitDto dto = new ProductUnitDto();
-                    dto.setUnitName(u.getUnitName());
+                    dto.setUnitName(u.getName());
                     dto.setConversionFactor(u.getConversionFactor());
                     dto.setBarcode(u.getBarcode());
                     return dto;
