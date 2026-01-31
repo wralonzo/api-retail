@@ -73,17 +73,19 @@ public class ProcessReceptionService {
           .stockMinim(5) // Valor por defecto corporativo
           .build();
 
-      // // Intentar establecer precio para la unidad base si existe
-      // product.getUnits().stream().filter(u ->
-      // u.isBase()).findFirst().ifPresent(baseUnit -> {
-      // ProductBranchPrice price = ProductBranchPrice.builder()
-      // .branchConfig(config)
-      // //.unit(baseUnit)
-      // .price(product.getBasePrice())
-      // .active(true)
-      // .build();
-      // config.getPrices().add(price);
-      // });
+      // Intentar establecer precio para la unidad base si existe
+      product.getUnits().stream()
+          .filter(u -> u.getUnitProduct().getId().equals(1L))
+          .findFirst()
+          .ifPresent(baseUnit -> {
+            ProductBranchPrice price = ProductBranchPrice.builder()
+                .branchConfig(config)
+                .unit(baseUnit.getUnitProduct())
+                .price(product.getBasePrice())
+                .active(true)
+                .build();
+            config.getPrices().add(price);
+          });
 
       branchConfigRepository.save(config);
     }

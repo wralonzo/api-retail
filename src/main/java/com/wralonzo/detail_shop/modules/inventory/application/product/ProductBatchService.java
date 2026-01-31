@@ -122,14 +122,7 @@ public class ProductBatchService {
 
     // Si es nuevo y no tiene unidades, crear la unidad base por defecto
     if (isNew && (product.getUnits() == null || product.getUnits().isEmpty())) {
-      ProductUnit baseUnit = this.productUnitRepository.findById(1L)
-          .orElseThrow(() -> new ResourceNotFoundException(
-              "Unidad no encontrada ID: 1"));
-      ProductUnitDetails productUnitDetails = ProductUnitDetails.builder()
-          .product(product)
-          .unitProduct(baseUnit)
-          .build();
-      product.getUnits().add(productUnitDetails);
+      product.getUnits().add(createBaseUnitDetails(product));
     }
 
     product = productRepository.save(product);
@@ -137,6 +130,16 @@ public class ProductBatchService {
     handleBranchAndCategory(product, row, context);
 
     return isNew;
+  }
+
+  private ProductUnitDetails createBaseUnitDetails(Product product) {
+    ProductUnit baseUnit = this.productUnitRepository.findById(1L)
+        .orElseThrow(() -> new ResourceNotFoundException(
+            "Unidad no encontrada ID: 1"));
+    return ProductUnitDetails.builder()
+        .product(product)
+        .unitProduct(baseUnit)
+        .build();
   }
 
   private void handleBranchAndCategory(Product product, Row row, UserBusinessContext context) {
@@ -167,25 +170,27 @@ public class ProductBatchService {
 
     // Actualizar o crear precio para la unidad base
     final ProductBranchConfig finalConfig = config; // effective final for lambda
-    // product.getUnits().stream().filter(u ->
-    // u.isBase()).findFirst().ifPresent(baseUnit -> {
-    // // Buscar si ya existe precio para esta unidad
-    // Optional<ProductBranchPrice> existingPrice = finalConfig.getPrices().stream()
-    // .filter(p -> p.getUnit().getId().equals(baseUnit.getId()))
-    // .findFirst();
+    product.getUnits().stream()
+        .filter(u -> u.getUnitProduct().getId().equals(1L))
+        .findFirst()
+        .ifPresent(baseUnit -> {
+          // Buscar si ya existe precio para esta unidad
+          Optional<ProductBranchPrice> existingPrice = finalConfig.getPrices().stream()
+              .filter(p -> p.getUnit().getId().equals(baseUnit.getUnitProduct().getId()))
+              .findFirst();
 
-    // if (existingPrice.isPresent()) {
-    // existingPrice.get().setPrice(product.getBasePrice());
-    // } else {
-    // ProductBranchPrice newPrice = ProductBranchPrice.builder()
-    // .branchConfig(finalConfig)
-    // //.unitProduct(baseUnit)
-    // .price(product.getBasePrice())
-    // .active(true)
-    // .build();
-    // finalConfig.getPrices().add(newPrice);
-    // }
-    // });
+          if (existingPrice.isPresent()) {
+            existingPrice.get().setPrice(product.getBasePrice());
+          } else {
+            ProductBranchPrice newPrice = ProductBranchPrice.builder()
+                .branchConfig(finalConfig)
+                .unit(baseUnit.getUnitProduct())
+                .price(product.getBasePrice())
+                .active(true)
+                .build();
+            finalConfig.getPrices().add(newPrice);
+          }
+        });
 
     branchConfigRepository.save(config);
   }
