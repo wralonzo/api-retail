@@ -18,10 +18,6 @@ public class ProductUnit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
-    private Product product;
-
     @Column(nullable = false)
     private String name; // "Unidad", "Fardo", "Caja"
 
@@ -32,4 +28,7 @@ public class ProductUnit {
 
     @Column(nullable = false)
     private boolean isBase; // True if this is the base unit (factor 1)
+
+    @Column(nullable = false)
+    private Long idBranch; // True if this is the base unit (factor 1)
 }
