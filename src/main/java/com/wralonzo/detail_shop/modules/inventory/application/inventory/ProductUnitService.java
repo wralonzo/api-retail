@@ -32,7 +32,22 @@ public class ProductUnitService {
     }
 
     public ProductUnit getProductUnitById(Long id) {
-        return productUnitRepository.findById(id).orElse(null);
+        ProductUnit productUnit = productUnitRepository.findById(id).orElse(null);
+        if (productUnit != null) {
+            UserBusinessContext context = warehouseService.getUserBusinessContext();
+            if (productUnit.getIdBranch() != context.branchId()) {
+                return null;
+            }
+            return ProductUnit.builder()
+                    .id(productUnit.getId())
+                    .name(productUnit.getName())
+                    .conversionFactor(productUnit.getConversionFactor())
+                    .barcode(productUnit.getBarcode())
+                    .isBase(productUnit.isBase())
+                    .idBranch(productUnit.getIdBranch())
+                    .build();
+        }
+        return null;
     }
 
     public ProductUnit createProductUnit(ProductUnit productUnit) {

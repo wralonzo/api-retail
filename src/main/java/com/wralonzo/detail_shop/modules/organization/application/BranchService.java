@@ -24,16 +24,37 @@ public class BranchService {
   private final CompanyRepository companyRepository;
 
   public Page<Branch> getAll(Pageable pageable) {
-    return branchRepository.findAll(pageable);
+    Page<Branch> branchs = branchRepository.findAll(pageable);
+    return branchs.map(branch -> Branch.builder()
+        .id(branch.getId())
+        .name(branch.getName())
+        .code(branch.getCode())
+        .address(branch.getAddress())
+        .company(branch.getCompany())
+        .build());
   }
 
   public Branch findById(Long id) {
-    return branchRepository.findById(id)
+    Branch branch = branchRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada con ID: " + id));
+    return Branch.builder()
+        .id(branch.getId())
+        .name(branch.getName())
+        .code(branch.getCode())
+        .address(branch.getAddress())
+        .company(branch.getCompany())
+        .build();
   }
 
   public List<Branch> getBranchesByCompany(Long idCompany) {
-    return branchRepository.findByCompanyId(idCompany);
+    List<Branch> branchs = branchRepository.findByCompanyId(idCompany);
+    return branchs.stream().map(branch -> Branch.builder()
+        .id(branch.getId())
+        .name(branch.getName())
+        .code(branch.getCode())
+        .address(branch.getAddress())
+        .company(branch.getCompany())
+        .build()).toList();
   }
 
   @Transactional
