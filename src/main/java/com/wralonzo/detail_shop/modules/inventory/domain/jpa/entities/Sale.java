@@ -41,6 +41,9 @@ public class Sale {
     @Column(name = "id_client", nullable = false)
     private long clientId;
 
+    @Column(name = "company_id", nullable = false)
+    private Long companyId;
+
     @Column(name = "warehouse_id")
     private Long warehouseId;
 
