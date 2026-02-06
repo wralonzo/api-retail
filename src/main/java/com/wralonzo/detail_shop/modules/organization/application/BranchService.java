@@ -30,7 +30,6 @@ public class BranchService {
         .name(branch.getName())
         .code(branch.getCode())
         .address(branch.getAddress())
-        .company(branch.getCompany())
         .build());
   }
 
@@ -42,7 +41,6 @@ public class BranchService {
         .name(branch.getName())
         .code(branch.getCode())
         .address(branch.getAddress())
-        .company(branch.getCompany())
         .build();
   }
 
