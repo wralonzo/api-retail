@@ -35,4 +35,9 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getCurrentStock(productId, warehouseId));
     }
 
+    @GetMapping("/low-stock")
+    public ResponseEntity<?> getLowStockAlerts() {
+        return ResponseEntity.ok(inventoryService.getLowStockAlerts());
+    }
+
 }
