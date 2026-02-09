@@ -40,4 +40,29 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getLowStockAlerts());
     }
 
+    // Load inventory - Individual
+    @PostMapping("/load")
+    public ResponseEntity<?> loadInventory(
+            @Valid @RequestBody com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+        var response = inventoryService.loadInventory(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // Load inventory - Bulk
+    @PostMapping("/load/bulk")
+    public ResponseEntity<?> loadInventoryBulk(
+            @Valid @RequestBody com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest request) {
+        var response = inventoryService.loadInventoryBulk(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // Load inventory - From Excel file
+    @PostMapping("/load/excel")
+    public ResponseEntity<?> loadInventoryFromExcel(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(required = false) Long warehouseId) {
+        var response = inventoryService.loadInventoryFromExcel(file, warehouseId);
+        return ResponseEntity.ok(response);
+    }
+
 }

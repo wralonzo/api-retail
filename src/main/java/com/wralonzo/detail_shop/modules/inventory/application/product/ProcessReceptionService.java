@@ -4,14 +4,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
+import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryService;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.PurchaseOrderReceptionRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ReceptionItemDTO;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.InventoryBatch;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Product;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductBranchConfig;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Supplier;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductBranchPrice;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.InventoryBatchRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductBranchConfigRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.SupplierRepository;
@@ -21,10 +20,10 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ProcessReceptionService {
-  private final InventoryBatchRepository batchRepository;
   private final ProductBranchConfigRepository branchConfigRepository;
   private final ProductRepository productRepository;
   private final SupplierRepository supplierRepository;
+  private final InventoryService inventoryService; // NUEVO: Integración con InventoryService
 
   @Transactional
   public void processReception(PurchaseOrderReceptionRequest request) {
@@ -38,28 +37,29 @@ public class ProcessReceptionService {
           .orElseThrow(() -> new ResourceNotFoundException("Producto ID " + item.getProductId() + " no encontrado"));
 
       // 3. SEGURIDAD: Validar que el producto tenga configuración en esta sucursal
-      // Si no existe, podrías crear una por defecto con el basePrice del maestro
       ensureBranchConfigExists(product, request.getBranchId());
 
-      // 4. CREAR EL LOTE (InventoryBatch)
-      InventoryBatch newBatch = InventoryBatch.builder()
-          .product(product)
-          .supplier(supplier)
-          .warehouseId(request.getWarehouseId())
-          .batchNumber(item.getBatchNumber())
-          .initialQuantity(item.getQuantity())
-          .currentQuantity(item.getQuantity())
-          .costPrice(item.getCostPrice())
-          .expirationDate(item.getExpirationDate())
-          .build();
+      // 4. NUEVO: Actualizar inventario usando InventoryService
+      // Esto actualizará la tabla inventories, creará el lote y registrará en Kardex
+      inventoryService.receiveStockWithBatch(
+          item.getProductId(),
+          request.getSupplierId(),
+          item.getQuantity(),
+          item.getBatchNumber() != null ? item.getBatchNumber() : generateBatchNumber(product),
+          item.getExpirationDate(),
+          request.getWarehouseId());
 
-      batchRepository.save(newBatch);
-
-      // 5. Opcional: Actualizar el 'pricePurchase' sugerido en el maestro
+      // 5. Actualizar el 'pricePurchase' sugerido en el maestro
       // para que la próxima orden de compra tenga el último costo registrado.
       product.setPricePurchase(item.getCostPrice());
       productRepository.save(product);
     }
+  }
+
+  private String generateBatchNumber(Product product) {
+    // Generar número de lote automático si no se proporcionó
+    long timestamp = System.currentTimeMillis();
+    return "AUTO-" + product.getSku() + "-" + timestamp;
   }
 
   private void ensureBranchConfigExists(Product product, Long branchId) {

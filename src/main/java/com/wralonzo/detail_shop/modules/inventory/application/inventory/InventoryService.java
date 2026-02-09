@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -152,5 +153,275 @@ public class InventoryService {
             throw new ResourceConflictException(
                     "Acceso denegado: Usted no tiene permisos para gestionar el almacén con ID " + warehouseId);
         }
+    }
+
+    // --- INVENTORY LOADING METHODS ---
+
+    @Transactional
+    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventory(
+            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+
+        validateWarehouseAccess(request.getWarehouseId());
+
+        try {
+            // If has batch information, use the existing batch method
+            if (request.getBatchNumber() != null && !request.getBatchNumber().isBlank()) {
+                receiveStockWithBatch(
+                        request.getProductId(),
+                        request.getSupplierId(),
+                        request.getQuantity(),
+                        request.getBatchNumber(),
+                        request.getExpirationDate(),
+                        request.getWarehouseId());
+            } else {
+                // Direct inventory update without batch
+                loadInventoryDirect(request);
+            }
+
+            return com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse.builder()
+                    .success(true)
+                    .message("Inventario cargado exitosamente")
+                    .itemsProcessed(1)
+                    .build();
+
+        } catch (Exception e) {
+            return com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse.builder()
+                    .success(false)
+                    .message("Error al cargar inventario: " + e.getMessage())
+                    .itemsProcessed(0)
+                    .errors(List.of(e.getMessage()))
+                    .build();
+        }
+    }
+
+    @Transactional
+    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventoryBulk(
+            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest bulkRequest) {
+
+        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse response = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse
+                .builder()
+                .success(true)
+                .itemsProcessed(0)
+                .build();
+
+        int processedCount = 0;
+        List<String> errors = new ArrayList<>();
+
+        for (int i = 0; i < bulkRequest.getItems().size(); i++) {
+            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest item = bulkRequest
+                    .getItems().get(i);
+
+            // Apply default warehouse if not specified
+            if (item.getWarehouseId() == null && bulkRequest.getWarehouseId() != null) {
+                item.setWarehouseId(bulkRequest.getWarehouseId());
+            }
+
+            try {
+                if (item.getBatchNumber() != null && !item.getBatchNumber().isBlank()) {
+                    receiveStockWithBatch(
+                            item.getProductId(),
+                            item.getSupplierId(),
+                            item.getQuantity(),
+                            item.getBatchNumber(),
+                            item.getExpirationDate(),
+                            item.getWarehouseId());
+                } else {
+                    loadInventoryDirect(item);
+                }
+                processedCount++;
+            } catch (Exception e) {
+                errors.add("Item " + (i + 1) + ": " + e.getMessage());
+            }
+        }
+
+        response.setItemsProcessed(processedCount);
+        response.setErrors(errors);
+        response.setMessage(processedCount + " de " + bulkRequest.getItems().size() + " items procesados");
+        response.setSuccess(errors.isEmpty());
+
+        return response;
+    }
+
+    @Transactional
+    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventoryFromExcel(
+            org.springframework.web.multipart.MultipartFile file, Long defaultWarehouseId) {
+
+        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse response = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse
+                .builder()
+                .success(false)
+                .itemsProcessed(0)
+                .build();
+
+        try {
+            // Parse Excel file using Apache POI
+            org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory
+                    .create(file.getInputStream());
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+
+            List<com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest> items = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+
+            // Skip header row, start from row 1
+            for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                org.apache.poi.ss.usermodel.Row row = sheet.getRow(rowIndex);
+                if (row == null)
+                    continue;
+
+                try {
+                    com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest item = parseRowToInventoryLoadRequest(
+                            row, defaultWarehouseId);
+                    if (item != null) {
+                        items.add(item);
+                    }
+                } catch (Exception e) {
+                    errors.add("Fila " + (rowIndex + 1) + ": " + e.getMessage());
+                }
+            }
+
+            workbook.close();
+
+            // Process items using bulk method
+            if (!items.isEmpty()) {
+                com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest bulkRequest = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest
+                        .builder()
+                        .items(items)
+                        .warehouseId(defaultWarehouseId)
+                        .build();
+
+                response = loadInventoryBulk(bulkRequest);
+                response.getErrors().addAll(0, errors); // Add parsing errors at the beginning
+            } else {
+                response.setMessage("No se encontraron items válidos en el archivo Excel");
+                response.setErrors(errors);
+            }
+
+        } catch (Exception e) {
+            response.setMessage("Error al procesar archivo Excel: " + e.getMessage());
+            response.getErrors().add(e.getMessage());
+        }
+
+        return response;
+    }
+
+    // --- PRIVATE HELPER METHODS ---
+
+    private void loadInventoryDirect(
+            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new ResourceConflictException(
+                        "Producto no encontrado con ID: " + request.getProductId()));
+
+        // Get or create inventory
+        Inventory inventory = inventoryRepository
+                .findByProductIdAndWarehouseId(request.getProductId(), request.getWarehouseId())
+                .orElseGet(() -> inventoryRepository
+                        .save(inventoryMovementService.createInitialInventory(request.getProductId(),
+                                request.getWarehouseId())));
+
+        int quantityBefore = inventory.getQuantity();
+        int quantityNew = quantityBefore + request.getQuantity();
+
+        inventory.setQuantity(quantityNew);
+        inventoryRepository.save(inventory);
+
+        // Create movement request for Kardex
+        InventoryMovementRequest movementRequest = new InventoryMovementRequest();
+        movementRequest.setProductId(request.getProductId());
+        movementRequest.setWarehouseId(request.getWarehouseId());
+        movementRequest.setQuantity(request.getQuantity());
+        movementRequest.setReference("Carga de inventario");
+        movementRequest.setNotes(request.getNotes() != null ? request.getNotes() : "Carga manual de inventario");
+
+        // Record in Kardex
+        inventoryMovementService.saveMovementDetail(inventory, movementRequest, quantityBefore, quantityNew,
+                MovementType.ENTRADA_COMPRA);
+    }
+
+    private com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest parseRowToInventoryLoadRequest(
+            org.apache.poi.ss.usermodel.Row row, Long defaultWarehouseId) {
+
+        // Expected columns: SKU | Product Name | Warehouse ID | Quantity | Supplier ID
+        // | Batch | Exp Date | Notes
+
+        org.apache.poi.ss.usermodel.Cell skuCell = row.getCell(0);
+        org.apache.poi.ss.usermodel.Cell warehouseCell = row.getCell(2);
+        org.apache.poi.ss.usermodel.Cell quantityCell = row.getCell(3);
+
+        if (skuCell == null || quantityCell == null) {
+            return null; // Skip empty rows
+        }
+
+        String sku = getCellValueAsString(skuCell);
+        if (sku == null || sku.isBlank()) {
+            return null;
+        }
+
+        // Find product by SKU
+        Product product = productRepository.findBySku(sku)
+                .orElseThrow(() -> new ResourceConflictException("Producto no encontrado con SKU: " + sku));
+
+        Long warehouseId = defaultWarehouseId;
+        if (warehouseCell != null) {
+            warehouseId = (long) getCellValueAsNumeric(warehouseCell);
+        }
+
+        Integer quantity = (int) getCellValueAsNumeric(quantityCell);
+
+        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest
+                .builder()
+                .productId(product.getId())
+                .warehouseId(warehouseId)
+                .quantity(quantity)
+                .build();
+
+        // Optional fields
+        org.apache.poi.ss.usermodel.Cell supplierCell = row.getCell(4);
+        if (supplierCell != null) {
+            try {
+                request.setSupplierId((long) getCellValueAsNumeric(supplierCell));
+            } catch (Exception ignored) {
+            }
+        }
+
+        org.apache.poi.ss.usermodel.Cell batchCell = row.getCell(5);
+        if (batchCell != null) {
+            request.setBatchNumber(getCellValueAsString(batchCell));
+        }
+
+        org.apache.poi.ss.usermodel.Cell notesCell = row.getCell(7);
+        if (notesCell != null) {
+            request.setNotes(getCellValueAsString(notesCell));
+        }
+
+        return request;
+    }
+
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null)
+            return null;
+
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            default -> null;
+        };
+    }
+
+    private double getCellValueAsNumeric(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null)
+            return 0;
+
+        return switch (cell.getCellType()) {
+            case NUMERIC -> cell.getNumericCellValue();
+            case STRING -> {
+                try {
+                    yield Double.parseDouble(cell.getStringCellValue());
+                } catch (NumberFormatException e) {
+                    yield 0;
+                }
+            }
+            default -> 0;
+        };
     }
 }
