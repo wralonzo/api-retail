@@ -63,13 +63,17 @@ public class InventoryMovementService {
   }
 
   public Inventory createInitialInventory(Long productId, Long warehouseId) {
-    return Inventory.builder()
-        .product(productRepository.getReferenceById(productId))
+    Inventory.InventoryBuilder builder = Inventory.builder()
         .warehouseId(warehouseId)
         .quantity(0)
         .quantityReserved(0)
-        .alertQuantity(5)
-        .build();
+        .alertQuantity(5);
+
+    if (productId != null) {
+      builder.product(productRepository.getReferenceById(productId));
+    }
+
+    return builder.build();
   }
 
   @Transactional

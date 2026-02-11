@@ -8,8 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnit;
-
 @Entity
 @Table(name = "sale_detail")
 @Data

@@ -22,4 +22,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Long> findAllIdsByCompanyId(@Param("companyId") Long companyId);
 
     Page<WarehouseProjection> findAllProjectedBy(Pageable pageable);
+
+    List<Warehouse> findAllByBranchId(Long branchId);
 }

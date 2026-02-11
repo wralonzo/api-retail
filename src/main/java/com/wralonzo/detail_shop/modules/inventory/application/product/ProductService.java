@@ -5,9 +5,11 @@ import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundExceptio
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductUnitDto;
+import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryMovementService;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductBundleDto;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.CategoryRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductUnitRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.specs.ProductSpecifications;
@@ -32,6 +34,8 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final WarehouseService warehouseService;
     private final ProductUnitRepository productUnitRepository;
+    private final InventoryMovementService inventoryMovementService;
+    private final CategoryRepository categoryRepository;
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> getAll(String term, Boolean active, Long requestedCompanyId,
@@ -87,6 +91,10 @@ public class ProductService {
             throw new ResourceConflictException("Ya existe un producto con el SKU: " + request.getSku());
         }
 
+        if (categoryRepository.findById(request.getCategoryId()).isEmpty()) {
+            throw new ResourceConflictException("No existe una categoría con el ID: " + request.getCategoryId());
+        }
+
         UserBusinessContext context = warehouseService.getUserBusinessContext();
 
         Product product = Product.builder()
@@ -102,11 +110,48 @@ public class ProductService {
                 .build();
 
         // 1. Manejo de Unidades Adicionales
-        handleProductUnits(product, request.getUnits());
+        product.setUnits(handleProductUnits(product, request.getUnits()));
 
         // 2. Manejo de Combos (Bundles)
         handleProductBundles(product, request.getBundleItems());
 
+        List<Long> branches = warehouseService.findAllIdsByCompanyId(context.companyId());
+
+        for (Long branchId : branches) {
+            // 1. Asegurar ProductBranchConfig
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoría no encontrada"));
+
+            ProductBranchConfig config = ProductBranchConfig.builder()
+                    .product(product)
+                    .branchId(branchId)
+                    .active(true)
+                    .stockMinim(request.getStockMinim())
+                    .category(category)
+                    .build();
+
+            // Agregar a la colección del producto
+            product.getBranchConfigs().add(config);
+
+            // 2. Definir Precio (si hay unidades disponibles)
+            if (product.getUnits() != null && !product.getUnits().isEmpty()) {
+                ProductBranchPrice newPrice = ProductBranchPrice.builder()
+                        .branchConfig(config)
+                        .unit(product.getUnits().get(0).getUnitProduct())
+                        .price(product.getBasePrice())
+                        .active(true)
+                        .build();
+
+                config.getPrices().add(newPrice);
+            }
+        }
+
+        // 3. Inicializar inventario en cada almacén de la sucursal
+        for (Long warehouseId : context.warehouseIds()) {
+            Inventory inventory = inventoryMovementService.createInitialInventory(null, warehouseId);
+            inventory.setProduct(product); // Relación bidireccional
+            product.getInventories().add(inventory);
+        }
         return mapToResponse(productRepository.save(product));
     }
 
@@ -139,7 +184,7 @@ public class ProductService {
         // Actualizar Unidades (Reemplazo simple por ahora, idealmente merge)
         if (request.getUnits() != null) {
             product.getUnits().clear();
-            handleProductUnits(product, request.getUnits());
+            product.setUnits(handleProductUnits(product, request.getUnits()));
         }
 
         // Actualizar Bundle Items
@@ -151,7 +196,7 @@ public class ProductService {
         return mapToResponse(productRepository.save(product));
     }
 
-    private void handleProductUnits(Product product, List<ProductUnitDto> unitsDto) {
+    private List<ProductUnitDetails> handleProductUnits(Product product, List<ProductUnitDto> unitsDto) {
         if (unitsDto != null) {
             List<ProductUnitDetails> units = unitsDto.stream().map(dto -> {
                 ProductUnit unit = this.productUnitRepository.findById(dto.getId())
@@ -160,13 +205,12 @@ public class ProductService {
                 return ProductUnitDetails.builder()
                         .product(product)
                         .unitProduct(unit)
-                        // Note: Assuming DTO has fields for conversionFactor/barcode/isBase if needed
-                        // here
-                        // For now just linking the unit based on entity logic
                         .build();
             }).toList();
             product.getUnits().addAll(units);
+            return units;
         }
+        return null;
     }
 
     private void handleProductBundles(Product product, List<ProductBundleDto> bundlesDto) {

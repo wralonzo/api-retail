@@ -2,6 +2,8 @@ package com.wralonzo.detail_shop.modules.inventory.infraestructure;
 
 import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryMovementService;
 import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryService;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryMovementRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -9,6 +11,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -43,7 +46,7 @@ public class InventoryController {
     // Load inventory - Individual
     @PostMapping("/load")
     public ResponseEntity<?> loadInventory(
-            @Valid @RequestBody com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+            @Valid @RequestBody InventoryLoadRequest request) {
         var response = inventoryService.loadInventory(request);
         return ResponseEntity.ok(response);
     }
@@ -51,7 +54,7 @@ public class InventoryController {
     // Load inventory - Bulk
     @PostMapping("/load/bulk")
     public ResponseEntity<?> loadInventoryBulk(
-            @Valid @RequestBody com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest request) {
+            @Valid @RequestBody InventoryLoadBulkRequest request) {
         var response = inventoryService.loadInventoryBulk(request);
         return ResponseEntity.ok(response);
     }
@@ -59,10 +62,16 @@ public class InventoryController {
     // Load inventory - From Excel file
     @PostMapping("/load/excel")
     public ResponseEntity<?> loadInventoryFromExcel(
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Long warehouseId) {
         var response = inventoryService.loadInventoryFromExcel(file, warehouseId);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/initialize-branch/{branchId}")
+    public ResponseEntity<?> initializeBranchInventory(@PathVariable Long branchId) {
+        inventoryService.initializeBranchInventory(branchId);
+        return ResponseEntity.ok(Map.of("message", "Inventario de sucursal inicializado con éxito"));
     }
 
 }

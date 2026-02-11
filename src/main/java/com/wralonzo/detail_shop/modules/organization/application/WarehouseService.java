@@ -156,4 +156,10 @@ public class WarehouseService {
 
         return new UserBusinessContext(companyId, allWarehouseIds, false, user, userWarehouse.getBranch().getId());
     }
+
+    public List<Long> findAllIdsByCompanyId(Long companyId) {
+        return branchRepository.findByCompanyId(companyId).stream()
+                .map(Branch::getId)
+                .collect(Collectors.toList());
+    }
 }

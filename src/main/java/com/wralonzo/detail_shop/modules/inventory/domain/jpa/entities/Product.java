@@ -78,6 +78,10 @@ public class Product {
         @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
         private List<ProductBranchConfig> branchConfigs = new ArrayList<>();
 
+        @Builder.Default
+        @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+        private List<Inventory> inventories = new ArrayList<>();
+
         // Colecciones inicializadas para evitar NullPointerException
         @Builder.Default
         @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)

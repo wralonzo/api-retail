@@ -33,4 +33,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     Optional<Product> findBySku(String sku);
 
     Optional<Product> findBySkuAndCompanyId(String sku, Long companyId);
+
+    List<Product> findAllByCompanyId(Long companyId);
 }

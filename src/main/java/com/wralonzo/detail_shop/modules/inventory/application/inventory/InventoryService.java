@@ -1,22 +1,34 @@
 package com.wralonzo.detail_shop.modules.inventory.application.inventory;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryMovementRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.StockResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.MovementType;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.StockStatus;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Inventory;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.InventoryBatch;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Product;
-import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Supplier;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.InventoryBatchRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.InventoryRepository;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductBranchConfigRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
+import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Branch;
+import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
+import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.BranchRepository;
+import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.WarehouseRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
 import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
+import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +43,9 @@ public class InventoryService {
     private final ProductRepository productRepository;
     private final InventoryBatchRepository batchRepository;
     private final WarehouseService warehouseService;
+    private final BranchRepository branchRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final ProductBranchConfigRepository productBranchConfigRepository;
 
     // --- 1. CONSULTA DE KARDEX (HISTORIAL DETALLADO) ---
 
@@ -121,6 +136,38 @@ public class InventoryService {
                 MovementType.ENTRADA_COMPRA);
     }
 
+    @Transactional
+    public void initializeBranchInventory(Long branchId) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada con ID: " + branchId));
+
+        Long companyId = branch.getCompany().getId();
+        List<Warehouse> warehouses = warehouseRepository.findAllByBranchId(branchId);
+        List<Product> products = productRepository.findAllByCompanyId(companyId);
+
+        for (Product product : products) {
+            // 1. Asegurar ProductBranchConfig
+            if (!productBranchConfigRepository.existsByProductIdAndBranchId(product.getId(), branchId)) {
+                ProductBranchConfig config = ProductBranchConfig.builder()
+                        .product(product)
+                        .branchId(branchId)
+                        .active(true)
+                        .stockMinim(5)
+                        .build();
+                productBranchConfigRepository.save(config);
+            }
+
+            // 2. Asegurar Inventory para cada Warehouse
+            for (Warehouse warehouse : warehouses) {
+                if (!inventoryRepository.existsByProductIdAndWarehouseId(product.getId(), warehouse.getId())) {
+                    Inventory inventory = inventoryMovementService.createInitialInventory(product.getId(),
+                            warehouse.getId());
+                    inventoryRepository.save(inventory);
+                }
+            }
+        }
+    }
+
     // --- MÉTODOS AUXILIARES Y PRIVADOS ---
     private StockResponse buildEmptyStockResponse(Product product) {
         return StockResponse.builder()
@@ -158,8 +205,8 @@ public class InventoryService {
     // --- INVENTORY LOADING METHODS ---
 
     @Transactional
-    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventory(
-            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+    public InventoryLoadResponse loadInventory(
+            InventoryLoadRequest request) {
 
         validateWarehouseAccess(request.getWarehouseId());
 
@@ -178,14 +225,14 @@ public class InventoryService {
                 loadInventoryDirect(request);
             }
 
-            return com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse.builder()
+            return InventoryLoadResponse.builder()
                     .success(true)
                     .message("Inventario cargado exitosamente")
                     .itemsProcessed(1)
                     .build();
 
         } catch (Exception e) {
-            return com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse.builder()
+            return InventoryLoadResponse.builder()
                     .success(false)
                     .message("Error al cargar inventario: " + e.getMessage())
                     .itemsProcessed(0)
@@ -195,10 +242,10 @@ public class InventoryService {
     }
 
     @Transactional
-    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventoryBulk(
-            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest bulkRequest) {
+    public InventoryLoadResponse loadInventoryBulk(
+            InventoryLoadBulkRequest bulkRequest) {
 
-        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse response = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse
+        InventoryLoadResponse response = InventoryLoadResponse
                 .builder()
                 .success(true)
                 .itemsProcessed(0)
@@ -208,7 +255,7 @@ public class InventoryService {
         List<String> errors = new ArrayList<>();
 
         for (int i = 0; i < bulkRequest.getItems().size(); i++) {
-            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest item = bulkRequest
+            InventoryLoadRequest item = bulkRequest
                     .getItems().get(i);
 
             // Apply default warehouse if not specified
@@ -243,10 +290,10 @@ public class InventoryService {
     }
 
     @Transactional
-    public com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse loadInventoryFromExcel(
-            org.springframework.web.multipart.MultipartFile file, Long defaultWarehouseId) {
+    public InventoryLoadResponse loadInventoryFromExcel(
+            MultipartFile file, Long defaultWarehouseId) {
 
-        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse response = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse
+        InventoryLoadResponse response = InventoryLoadResponse
                 .builder()
                 .success(false)
                 .itemsProcessed(0)
@@ -254,11 +301,10 @@ public class InventoryService {
 
         try {
             // Parse Excel file using Apache POI
-            org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory
-                    .create(file.getInputStream());
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            Workbook workbook = WorkbookFactory.create(file.getInputStream());
+            Sheet sheet = workbook.getSheetAt(0);
 
-            List<com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest> items = new ArrayList<>();
+            List<InventoryLoadRequest> items = new ArrayList<>();
             List<String> errors = new ArrayList<>();
 
             // Skip header row, start from row 1
@@ -268,7 +314,7 @@ public class InventoryService {
                     continue;
 
                 try {
-                    com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest item = parseRowToInventoryLoadRequest(
+                    InventoryLoadRequest item = parseRowToInventoryLoadRequest(
                             row, defaultWarehouseId);
                     if (item != null) {
                         items.add(item);
@@ -282,7 +328,7 @@ public class InventoryService {
 
             // Process items using bulk method
             if (!items.isEmpty()) {
-                com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest bulkRequest = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest
+                InventoryLoadBulkRequest bulkRequest = InventoryLoadBulkRequest
                         .builder()
                         .items(items)
                         .warehouseId(defaultWarehouseId)
@@ -306,7 +352,7 @@ public class InventoryService {
     // --- PRIVATE HELPER METHODS ---
 
     private void loadInventoryDirect(
-            com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request) {
+            InventoryLoadRequest request) {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceConflictException(
                         "Producto no encontrado con ID: " + request.getProductId()));
@@ -337,8 +383,8 @@ public class InventoryService {
                 MovementType.ENTRADA_COMPRA);
     }
 
-    private com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest parseRowToInventoryLoadRequest(
-            org.apache.poi.ss.usermodel.Row row, Long defaultWarehouseId) {
+    private InventoryLoadRequest parseRowToInventoryLoadRequest(
+            Row row, Long defaultWarehouseId) {
 
         // Expected columns: SKU | Product Name | Warehouse ID | Quantity | Supplier ID
         // | Batch | Exp Date | Notes
@@ -367,7 +413,7 @@ public class InventoryService {
 
         Integer quantity = (int) getCellValueAsNumeric(quantityCell);
 
-        com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest request = com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest
+        InventoryLoadRequest request = InventoryLoadRequest
                 .builder()
                 .productId(product.getId())
                 .warehouseId(warehouseId)
