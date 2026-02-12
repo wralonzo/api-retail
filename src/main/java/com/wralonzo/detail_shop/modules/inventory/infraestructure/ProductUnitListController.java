@@ -32,8 +32,8 @@ public class ProductUnitListController {
     }
 
     @PatchMapping("/delete")
-    public ResponseEntity<?> deleteProductUnit(@RequestParam Long productId, @RequestParam Long idUnit) {
-        productUnitListService.deleteProductUnit(productId, idUnit);
-        return ResponseEntity.ok(productUnitListService.getAllProductUnits(productId));
+    public ResponseEntity<?> deleteProductUnit(@RequestParam Long id) {
+        productUnitListService.deleteProductUnit(id);
+        return ResponseEntity.ok(productUnitListService.getAllProductUnits(id));
     }
 }

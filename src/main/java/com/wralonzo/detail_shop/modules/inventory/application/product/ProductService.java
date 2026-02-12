@@ -253,11 +253,6 @@ public class ProductService {
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdateAt())
                 .type(p.getType())
-                .units(p.getUnits().stream().map(u -> {
-                    ProductUnitDto dto = new ProductUnitDto();
-                    dto.setId(u.getUnitProduct().getId());
-                    return dto;
-                }).toList())
                 .bundleItems(p.getType() == ProductType.BUNDLE ? p.getBundleItems().stream().map(b -> {
                     ProductBundleDto dto = new ProductBundleDto();
                     dto.setChildProductId(b.getComponentProduct().getId());

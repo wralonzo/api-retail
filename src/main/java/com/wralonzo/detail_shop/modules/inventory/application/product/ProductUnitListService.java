@@ -2,13 +2,15 @@ package com.wralonzo.detail_shop.modules.inventory.application.product;
 
 import java.util.List;
 
-import com.jetbrains.exported.JBRApi.Service;
+import org.springframework.stereotype.Service;
+
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductUnitResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Product;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnit;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.ProductUnitDetails;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductUnitDetailsRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 
 @Service
@@ -17,7 +19,7 @@ public class ProductUnitListService {
     private final ProductUnitDetailsRepository productUnitDetailsRepository;
 
     public List<ProductUnitResponse> getAllProductUnits(Long productId) {
-        List<ProductUnitDetails> productUnits = productUnitDetailsRepository.findByIdProduct(productId);
+        List<ProductUnitDetails> productUnits = productUnitDetailsRepository.findByProductId(productId);
         return productUnits.stream().map(productUnit -> {
             ProductUnitResponse response = new ProductUnitResponse();
             response.setId(productUnit.getId());
@@ -37,13 +39,9 @@ public class ProductUnitListService {
         productUnitDetailsRepository.save(productUnit);
     }
 
-    public void deleteProductUnit(Long idProduct, Long idUnit) {
-        ProductUnitDetails productUnit = new ProductUnitDetails();
-        Product product = Product.builder().id(idProduct).build();
-        ProductUnit unitProduct = ProductUnit.builder().id(idUnit).build();
-        productUnit.setUnitProduct(unitProduct);
-        productUnit.setProduct(product);
-        productUnitDetailsRepository.delete(productUnit);
+    @Transactional
+    public void deleteProductUnit(Long id) {
+        productUnitDetailsRepository.deleteById(id);
     }
 
 }
