@@ -24,4 +24,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Page<WarehouseProjection> findAllProjectedBy(Pageable pageable);
 
     List<Warehouse> findAllByBranchId(Long branchId);
+
+    List<WarehouseProjection> findAllProjectedByBranchId(Long branchId);
 }

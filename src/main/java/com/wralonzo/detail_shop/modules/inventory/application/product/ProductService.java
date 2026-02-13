@@ -7,6 +7,7 @@ import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductRes
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductUnitDto;
 import com.wralonzo.detail_shop.modules.inventory.application.inventory.InventoryMovementService;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductBundleDto;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.product.ProductBranchConfigDto;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.CategoryRepository;
@@ -253,11 +254,24 @@ public class ProductService {
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdateAt())
                 .type(p.getType())
-                .bundleItems(p.getType() == ProductType.BUNDLE ? p.getBundleItems().stream().map(b -> {
-                    ProductBundleDto dto = new ProductBundleDto();
-                    dto.setChildProductId(b.getComponentProduct().getId());
-                    dto.setQuantity(b.getQuantity());
-                    return dto;
+                .bundleItems(p.getType() == ProductType.BUNDLE && p.getBundleItems() != null
+                        ? p.getBundleItems().stream().map(b -> {
+                            ProductBundleDto dto = new ProductBundleDto();
+                            dto.setChildProductId(b.getComponentProduct().getId());
+                            dto.setChildProductName(b.getComponentProduct().getName());
+                            dto.setQuantity(b.getQuantity());
+                            return dto;
+                        }).toList()
+                        : null)
+                .branchConfigs(p.getBranchConfigs() != null ? p.getBranchConfigs().stream().map(bc -> {
+                    return ProductBranchConfigDto.builder()
+                            .id(bc.getId())
+                            .branchId(bc.getBranchId())
+                            .categoryId(bc.getCategory() != null ? bc.getCategory().getId() : null)
+                            .categoryName(bc.getCategory() != null ? bc.getCategory().getName() : null)
+                            .active(bc.getActive())
+                            .stockMinim(bc.getStockMinim())
+                            .build();
                 }).toList() : null)
                 .build();
     }

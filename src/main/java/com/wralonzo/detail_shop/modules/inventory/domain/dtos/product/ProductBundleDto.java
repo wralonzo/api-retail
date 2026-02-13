@@ -9,6 +9,8 @@ public class ProductBundleDto {
     @NotNull(message = "El ID del producto hijo es obligatorio")
     private Long childProductId;
 
+    private String childProductName;
+
     @NotNull(message = "La cantidad es obligatoria")
     @Positive(message = "La cantidad debe ser mayor a 0")
     private Integer quantity;

@@ -42,6 +42,7 @@ public class ProductResponse {
     private ProductType type;
     private List<ProductUnitDto> units;
     private List<ProductBundleDto> bundleItems;
+    private List<ProductBranchConfigDto> branchConfigs;
 
     // Auditoría (Opcional, útil para el frontend)
     private LocalDateTime createdAt;

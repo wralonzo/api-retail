@@ -162,4 +162,8 @@ public class WarehouseService {
                 .map(Branch::getId)
                 .collect(Collectors.toList());
     }
+
+    public List<WarehouseProjection> getWarehousesByBranchId(Long branchId) {
+        return warehouseRepository.findAllProjectedByBranchId(branchId);
+    }
 }

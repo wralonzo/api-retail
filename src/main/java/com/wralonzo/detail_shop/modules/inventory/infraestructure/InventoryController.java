@@ -31,11 +31,10 @@ public class InventoryController {
     }
 
     // Consultar stock de un producto específico en una sucursal
-    @GetMapping("/stock")
+    @GetMapping("/stock/{productId}")
     public ResponseEntity<?> getStock(
-            @RequestParam @NotNull @Positive Long productId,
-            @RequestParam @NotNull @Positive Long warehouseId) {
-        return ResponseEntity.ok(inventoryService.getCurrentStock(productId, warehouseId));
+            @PathVariable @NotNull @Positive Long productId) {
+        return ResponseEntity.ok(inventoryService.getCurrentStock(productId));
     }
 
     @GetMapping("/low-stock")

@@ -14,8 +14,11 @@ import java.util.Optional;
 
 @Repository
 public interface InventoryRepository extends JpaRepository<Inventory, Long>, JpaSpecificationExecutor<Inventory> {
-    @EntityGraph(attributePaths = { "product", "product.category" })
+    @EntityGraph(attributePaths = { "product" })
     Optional<Inventory> findByProductIdAndWarehouseId(Long productId, Long warehouseId);
+
+    @EntityGraph(attributePaths = { "product" })
+    List<Inventory> findAllByProductId(Long productId);
 
     // Buscar productos donde la cantidad sea menor o igual a la alerta definida
     /*

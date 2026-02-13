@@ -1,11 +1,13 @@
 package com.wralonzo.detail_shop.modules.inventory.application.inventory;
 
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
+import com.wralonzo.detail_shop.modules.auth.domain.jpa.projections.WarehouseProjection;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadBulkRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryLoadResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryMovementRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.StockResponse;
+import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.WarehouseStockResponse;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.MovementType;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.StockStatus;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.*;
@@ -14,9 +16,7 @@ import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.Invent
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductBranchConfigRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Branch;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.entities.Warehouse;
 import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.BranchRepository;
-import com.wralonzo.detail_shop.modules.organization.domain.jpa.repositories.WarehouseRepository;
 import com.wralonzo.detail_shop.modules.organization.domain.records.UserBusinessContext;
 import com.wralonzo.detail_shop.modules.organization.application.WarehouseService;
 import com.wralonzo.detail_shop.configuration.exception.ResourceNotFoundException;
@@ -41,38 +41,63 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final InventoryMovementService inventoryMovementService;
     private final ProductRepository productRepository;
-    private final InventoryBatchRepository batchRepository;
     private final WarehouseService warehouseService;
     private final BranchRepository branchRepository;
-    private final WarehouseRepository warehouseRepository;
     private final ProductBranchConfigRepository productBranchConfigRepository;
+    private final InventoryBatchRepository inventoryBatchRepository;
 
     // --- 1. CONSULTA DE KARDEX (HISTORIAL DETALLADO) ---
 
     @Transactional(readOnly = true)
-    public StockResponse getCurrentStock(Long productId, Long warehouseId) {
-        validateWarehouseAccess(warehouseId);
-
+    public List<WarehouseStockResponse> getCurrentStock(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceConflictException("Producto no encontrado"));
 
-        Inventory inv = inventoryRepository.findByProductIdAndWarehouseId(productId, warehouseId)
-                .orElse(null);
+        UserBusinessContext context = warehouseService.getUserBusinessContext();
+        List<Long> userWarehouseIds = context.warehouseIds();
+        List<Inventory> inventories = inventoryRepository.findAllByProductId(productId).stream()
+                .filter(inv -> userWarehouseIds.contains(inv.getWarehouseId()))
+                .toList();
 
-        if (inv == null) {
-            return buildEmptyStockResponse(product);
+        if (inventories.isEmpty()) {
+            return new ArrayList<>();
         }
 
-        // StockStatus status = determineStockStatus(inv.getQuantity(),
-        // product.getStockMinim());
+        return inventories.stream().map(inv -> {
+            WarehouseProjection warehouse = warehouseService.getOneRecord(inv.getWarehouseId());
+            String warehouseName = (warehouse != null) ? warehouse.getName() : "Almacén " + inv.getWarehouseId();
 
-        return StockResponse.builder()
-                .productName(product.getName())
-                .sku(product.getSku())
-                .currentStock(inv.getQuantity())
-                .quantityReserved(inv.getQuantityReserved())
-                .quantityAvailable(inv.getQuantityFree())
-                .build();
+            StockStatus stockStatus = StockStatus.OK;
+            if (inv.getQuantity() == 0) {
+                stockStatus = StockStatus.SIN_STOCK;
+            } else if (warehouse != null) {
+                Long branchId = warehouse.getBranchId();
+                Integer stockMinim = product.getBranchConfigs().stream()
+                        .filter(bc -> bc.getBranchId().equals(branchId))
+                        .map(ProductBranchConfig::getStockMinim)
+                        .findFirst()
+                        .orElse(0);
+
+                if (inv.getQuantity() <= stockMinim) {
+                    stockStatus = StockStatus.BAJO_STOCK;
+                }
+            }
+
+            StockResponse stock = StockResponse.builder()
+                    .productName(product.getName())
+                    .sku(product.getSku())
+                    .warehouseName(warehouseName)
+                    .currentStock(inv.getQuantity())
+                    .quantityReserved(inv.getQuantityReserved())
+                    .quantityAvailable(inv.getQuantityFree())
+                    .status(stockStatus)
+                    .build();
+
+            return WarehouseStockResponse.builder()
+                    .almacenName(warehouseName)
+                    .inventario(stock)
+                    .build();
+        }).toList();
     }
 
     @Transactional(readOnly = true)
@@ -108,7 +133,7 @@ public class InventoryService {
                 .batchNumber(batchNo)
                 .expirationDate(expDate)
                 .build();
-        batchRepository.save(batch);
+        inventoryBatchRepository.save(batch);
 
         // 2. Actualización de Saldo Maestro
         Inventory inventory = inventoryRepository
@@ -142,7 +167,7 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sucursal no encontrada con ID: " + branchId));
 
         Long companyId = branch.getCompany().getId();
-        List<Warehouse> warehouses = warehouseRepository.findAllByBranchId(branchId);
+        List<WarehouseProjection> warehouses = warehouseService.getWarehousesByBranchId(branchId);
         List<Product> products = productRepository.findAllByCompanyId(companyId);
 
         for (Product product : products) {
@@ -158,7 +183,7 @@ public class InventoryService {
             }
 
             // 2. Asegurar Inventory para cada Warehouse
-            for (Warehouse warehouse : warehouses) {
+            for (WarehouseProjection warehouse : warehouses) {
                 if (!inventoryRepository.existsByProductIdAndWarehouseId(product.getId(), warehouse.getId())) {
                     Inventory inventory = inventoryMovementService.createInitialInventory(product.getId(),
                             warehouse.getId());
@@ -169,16 +194,6 @@ public class InventoryService {
     }
 
     // --- MÉTODOS AUXILIARES Y PRIVADOS ---
-    private StockResponse buildEmptyStockResponse(Product product) {
-        return StockResponse.builder()
-                .productName(product.getName())
-                .sku(product.getSku())
-                .currentStock(0)
-                .quantityReserved(0)
-                .quantityAvailable(0)
-                .status(StockStatus.SIN_STOCK)
-                .build();
-    }
 
     private Long determineTargetWarehouse(UserBusinessContext context, Long requestedId) {
         if (context.isSuperAdmin()) {
@@ -353,7 +368,7 @@ public class InventoryService {
 
     private void loadInventoryDirect(
             InventoryLoadRequest request) {
-        Product product = productRepository.findById(request.getProductId())
+        productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceConflictException(
                         "Producto no encontrado con ID: " + request.getProductId()));
 
