@@ -12,8 +12,10 @@ import lombok.NoArgsConstructor;
 public class ProductBranchConfigDto {
     private Long id;
     private Long branchId;
+    private String branchName;
     private Long categoryId;
     private String categoryName;
     private Boolean active;
     private Integer stockMinim;
+    private String nameWarehouse;
 }

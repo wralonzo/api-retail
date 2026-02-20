@@ -1,10 +1,12 @@
 package com.wralonzo.detail_shop.modules.inventory.domain.dtos.product;
 
+import lombok.Builder;
 import lombok.Data;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 @Data
+@Builder
 public class ProductBundleDto {
     @NotNull(message = "El ID del producto hijo es obligatorio")
     private Long childProductId;

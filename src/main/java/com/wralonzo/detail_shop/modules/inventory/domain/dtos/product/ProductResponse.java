@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
 
 @Data
@@ -29,20 +28,9 @@ public class ProductResponse {
     private Boolean active;
 
     // Datos de Relaciones (Aplanados)
-    private Long categoryId;
-    private String categoryName;
-
-    private Long supplierId;
-    private String supplierName;
-
-    private Long warehouseId;
-    private String warehouseName;
     private BigDecimal pricePurchase;
 
     private ProductType type;
-    private List<ProductUnitDto> units;
-    private List<ProductBundleDto> bundleItems;
-    private List<ProductBranchConfigDto> branchConfigs;
 
     // Auditoría (Opcional, útil para el frontend)
     private LocalDateTime createdAt;
