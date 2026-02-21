@@ -59,17 +59,19 @@ public class ReservationService {
     // if (client.getCreditLimit().compareTo(BigDecimal.ZERO) > 0) { ... }
 
     // 2. Crear Cabecera
+    LocalTime startTime = request.getStartTime() != null ? request.getStartTime() : LocalTime.now();
+
     Reservation reservation = Reservation.builder()
         .reservationDate(request.getReservationDate() != null ? request.getReservationDate()
             : LocalDate.now())
-        .startTime(LocalTime.now())
-        .finishDate(LocalTime.now().plusHours(1)) // Placeholder
+        .startTime(startTime)
+        .finishDate(startTime.plusHours(1)) // Placeholder de 1 hra
         .expirationDate(request.getExpirationDate() != null
             ? request.getExpirationDate().atStartOfDay()
             : LocalDate.now().plusDays(3).atStartOfDay())
         .notes(request.getNotes())
         .state(Reservation.Estado.PROGRAMADA)
-        .employeeId(context.user().getEmployee().getId())
+        .employeeId(request.getEmployeeId() != null ? request.getEmployeeId() : context.user().getEmployee().getId())
         .clientId(client.getId())
         .warehouseId(request.getWarehouseId())
         .total(BigDecimal.ZERO)
@@ -246,7 +248,10 @@ public class ReservationService {
         .id(r.getId())
         .clientId(r.getClientId())
         .warehouseId(r.getWarehouseId())
+        .employeeId(r.getEmployeeId())
         .reservationDate(r.getReservationDate())
+        .startTime(r.getStartTime())
+        .finishDate(r.getFinishDate())
         .expirationDate(r.getExpirationDate())
         .state(r.getState())
         .total(r.getTotal())

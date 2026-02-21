@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -21,7 +22,12 @@ public class ReservationRequest {
     @NotNull(message = "Warehouse ID is required")
     private Long warehouseId;
 
+    @NotNull(message = "Employee/Stylist ID is required")
+    private Long employeeId;
+
     private LocalDate reservationDate;
+
+    private LocalTime startTime;
 
     // Optional expiration date override (otherwise use default)
     private LocalDate expirationDate;
