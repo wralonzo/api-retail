@@ -18,7 +18,7 @@ public class ProductBundleController {
 
     private final ProductBundleService productBundleService;
 
-    @PostMapping
+    @PostMapping("/{idProduct}")
     public ResponseEntity<ProductBundleDto> create(
             @PathVariable Long idProduct,
             @Valid @RequestBody ProductBundleDto dto) {
