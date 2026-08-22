@@ -1,9 +1,9 @@
-
-FROM tomcat:11.0.15-jre21-temurin
+FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="wralonzo@gmail.com"
-LABEL description="API tet"
-COPY target/detail-shop-0.0.1-SNAPSHOT.war /usr/local/tomcat/webapps/app.war
-WORKDIR /usr/local/tomcat
+LABEL description="API Retail Spring Boot"
 
-# -- 4. Expone el puerto por defecto de Tomcat (8080)
+WORKDIR /app
+COPY target/detail-shop-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
