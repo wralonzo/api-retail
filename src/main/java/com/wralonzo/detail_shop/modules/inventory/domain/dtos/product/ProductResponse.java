@@ -22,17 +22,18 @@ public class ProductResponse {
 
     // Precios
     private BigDecimal priceSale;
+    private BigDecimal basePrice;
+    private BigDecimal pricePurchase;
 
     // Stock y Estado
     private Integer stockMinim;
     private Boolean active;
 
-    // Datos de Relaciones (Aplanados)
-    private BigDecimal pricePurchase;
-
+    // Tipo y Distinción Producto vs Servicio
     private ProductType type;
+    private Boolean isService;
 
-    // Auditoría (Opcional, útil para el frontend)
+    // Auditoría
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

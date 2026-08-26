@@ -22,11 +22,12 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getAll(
-            @RequestParam(required = false) String term, // Ahora es un término general
+            @RequestParam(required = false) String term,
             @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) Boolean isService,
             @RequestParam(required = false) Long companyId,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.getAll(term, active, companyId, pageable));
+        return ResponseEntity.ok(productService.getAll(term, active, isService, companyId, pageable));
     }
 
     @GetMapping("/{id}")

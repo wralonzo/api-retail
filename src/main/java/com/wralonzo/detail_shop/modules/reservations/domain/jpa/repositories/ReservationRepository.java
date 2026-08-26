@@ -13,8 +13,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     
     Page<Reservation> findAll(Pageable pageable);
 
+    Page<Reservation> findByClientId(Long clientId, Pageable pageable);
+
     @Query("SELECT COUNT(r) > 0 FROM Reservation r " +
-            "WHERE r.employeeId = :employeeId " + // Ajustado: ya no es r.employee.id
+            "WHERE r.employeeId = :employeeId " +
             "AND r.reservationDate = :date " +
             "AND r.state <> :excludeState " +
             "AND (:startTime < r.finishDate AND :finishDate > r.startTime)")

@@ -6,8 +6,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.wralonzo.detail_shop.configuration.exception.ResourceConflictException;
 import com.wralonzo.detail_shop.modules.inventory.domain.dtos.inventory.InventoryMovementRequest;
 import com.wralonzo.detail_shop.modules.inventory.domain.enums.MovementType;
+import com.wralonzo.detail_shop.modules.inventory.domain.enums.ProductType;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Inventory;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.InventoryMovement;
+import com.wralonzo.detail_shop.modules.inventory.domain.jpa.entities.Product;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.InventoryMovementRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.InventoryRepository;
 import com.wralonzo.detail_shop.modules.inventory.domain.jpa.repositories.ProductRepository;
@@ -23,42 +25,34 @@ public class InventoryMovementService {
   private final ProductRepository productRepository;
   private final InventoryMovementRepository inventoryMovementRepository;
   private final WarehouseService warehouseService;
-  // --- PUNTO DE ENTRADA PARA EL CONTROLADOR ---
 
   @Transactional
   public void processGenericMovement(InventoryMovementRequest request) {
 
-    // 1. Obtener o crear maestro de inventario
     Inventory inv = inventoryRepository
-        .findByProductIdAndWarehouseId(request.getProductId(),
-            request.getWarehouseId())
+        .findByProductIdAndWarehouseId(request.getProductId(), request.getWarehouseId())
         .orElseGet(() -> inventoryRepository
-            .save(createInitialInventory(request.getProductId(),
-                request.getWarehouseId())));
+            .save(createInitialInventory(request.getProductId(), request.getWarehouseId())));
 
     int before = inv.getQuantity();
     int after;
 
-    // 2. Determinar lógica según el tipo
     MovementType tipo = MovementType.valueOf(request.getType().toUpperCase());
 
     if (tipo == MovementType.ENTRADA_COMPRA) {
       after = before + request.getQuantity();
     } else if (tipo == MovementType.SALIDA_VENTA) {
       if (before < request.getQuantity()) {
-        new ResourceConflictException("Stock insuficiente para realizar la salida");
+        throw new ResourceConflictException("Stock insuficiente para realizar la salida");
       }
       after = before - request.getQuantity();
     } else {
-      // AJUSTE: El valor que viene es el stock real contado
       after = request.getQuantity();
     }
 
-    // 3. Actualizar saldo maestro
     inv.setQuantity(after);
     inventoryRepository.save(inv);
 
-    // 4. Registrar en Kardex (Auditoría)
     saveMovementDetail(inv, request, before, after, tipo);
   }
 
@@ -78,24 +72,24 @@ public class InventoryMovementService {
 
   @Transactional
   public void processSalesMovement(Long productId, Long warehouseId, int quantity, String reference) {
-    Inventory inv = inventoryRepository
-        .findByProductIdAndWarehouseId(productId, warehouseId)
-        .orElseThrow(() -> new ResourceConflictException("Inventario no encontrado para el producto " + productId));
+    if (productId == null) return;
 
-    int before = inv.getQuantity();
-    if (before < quantity) {
-      throw new ResourceConflictException(
-          "Stock insuficiente para el producto " + productId + ". Disponible: " + before + ", Requerido: " + quantity);
+    Product product = productRepository.findById(productId).orElse(null);
+    if (product != null && (Boolean.TRUE.equals(product.getIsService()) || product.getType() == ProductType.SERVICE)) {
+      return;
     }
 
-    int after = before - quantity;
+    Inventory inv = inventoryRepository
+        .findByProductIdAndWarehouseId(productId, warehouseId)
+        .orElseGet(() -> inventoryRepository.save(createInitialInventory(productId, warehouseId)));
+
+    int before = inv.getQuantity();
+    int after = Math.max(0, before - quantity);
     inv.setQuantity(after);
     inventoryRepository.save(inv);
 
     saveMovementDetail(inv, quantity, before, after, MovementType.SALIDA_VENTA, reference);
   }
-
-  // --- HELPER DE AUDITORÍA (PÚBLICO para uso interno) ---
 
   public void saveMovementDetail(Inventory inv, InventoryMovementRequest request,
       int before, int after, MovementType tipo) {
@@ -104,17 +98,25 @@ public class InventoryMovementService {
 
   public void saveMovementDetail(Inventory inv, int quantity, int before, int after, MovementType tipo,
       String reference) {
-    UserBusinessContext context = warehouseService.getUserBusinessContext();
+    Long userId = 1L;
+    try {
+      UserBusinessContext context = warehouseService.getUserBusinessContext();
+      if (context != null && context.user() != null) {
+        userId = context.user().getId();
+      }
+    } catch (Exception e) {
+      // Cliente público
+    }
 
     InventoryMovement detail = InventoryMovement.builder()
         .product(inv.getProduct())
         .warehouseId(inv.getWarehouseId())
         .movementType(tipo)
         .quantity(quantity)
-        .previousStock(before) // FIXED: Before
-        .currentStock(after) // FIXED: After
+        .previousStock(before)
+        .currentStock(after)
         .reference(reference)
-        .userId(context.user().getId())
+        .userId(userId)
         .build();
 
     inventoryMovementRepository.save(detail);
@@ -122,13 +124,16 @@ public class InventoryMovementService {
 
   @Transactional
   public void reserveStock(Long productId, Long warehouseId, int quantity) {
+    if (productId == null) return;
+
+    Product product = productRepository.findById(productId).orElse(null);
+    if (product != null && (Boolean.TRUE.equals(product.getIsService()) || product.getType() == ProductType.SERVICE)) {
+      return;
+    }
+
     Inventory inv = inventoryRepository
         .findByProductIdAndWarehouseId(productId, warehouseId)
-        .orElseThrow(() -> new ResourceConflictException("Inventario no encontrado para el producto " + productId));
-
-    if (inv.getQuantityFree() < quantity) {
-      throw new ResourceConflictException("Stock insuficiente para reservar. Disponible: " + inv.getQuantityFree());
-    }
+        .orElseGet(() -> inventoryRepository.save(createInitialInventory(productId, warehouseId)));
 
     inv.setQuantityReserved(inv.getQuantityReserved() + quantity);
     inventoryRepository.save(inv);
@@ -136,34 +141,44 @@ public class InventoryMovementService {
 
   @Transactional
   public void releaseReservedStock(Long productId, Long warehouseId, int quantity) {
+    if (productId == null) return;
+
+    Product product = productRepository.findById(productId).orElse(null);
+    if (product != null && (Boolean.TRUE.equals(product.getIsService()) || product.getType() == ProductType.SERVICE)) {
+      return;
+    }
+
     Inventory inv = inventoryRepository
         .findByProductIdAndWarehouseId(productId, warehouseId)
-        .orElseThrow(() -> new ResourceConflictException("Inventario no encontrado para el producto " + productId));
+        .orElse(null);
 
-    inv.setQuantityReserved(Math.max(0, inv.getQuantityReserved() - quantity));
-    inventoryRepository.save(inv);
+    if (inv != null) {
+      inv.setQuantityReserved(Math.max(0, inv.getQuantityReserved() - quantity));
+      inventoryRepository.save(inv);
+    }
   }
 
   @Transactional
   public void confirmReservedStock(Long productId, Long warehouseId, int quantity, String reference) {
+    if (productId == null) return;
+
+    Product product = productRepository.findById(productId).orElse(null);
+    if (product != null && (Boolean.TRUE.equals(product.getIsService()) || product.getType() == ProductType.SERVICE)) {
+      return;
+    }
+
     Inventory inv = inventoryRepository
         .findByProductIdAndWarehouseId(productId, warehouseId)
-        .orElseThrow(() -> new ResourceConflictException("Inventario no encontrado para el producto " + productId));
+        .orElseGet(() -> inventoryRepository.save(createInitialInventory(productId, warehouseId)));
 
-    // 1. Liberar la reserva
     inv.setQuantityReserved(Math.max(0, inv.getQuantityReserved() - quantity));
 
-    // 2. Descontar el stock real
     int before = inv.getQuantity();
-    if (before < quantity) {
-      throw new ResourceConflictException("Inconsistencia de inventario. Stock físico menor al reservado confirmado.");
-    }
-    int after = before - quantity;
+    int after = Math.max(0, before - quantity);
     inv.setQuantity(after);
 
     inventoryRepository.save(inv);
 
-    // 3. Registrar Movimiento
     saveMovementDetail(inv, quantity, before, after, MovementType.SALIDA_VENTA, reference);
   }
 }
